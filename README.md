@@ -8,3 +8,5 @@ It is compiled using MingW GCC and therefore operates as a Cross Compiler howeve
 should be able to self compile with the appropriate OS support on the target computer.
 
 An IOLIB is included that is supports CP/M operating system calls.
+
+A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
