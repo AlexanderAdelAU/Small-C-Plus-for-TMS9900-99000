@@ -1,0 +1,285 @@
+;
+;  DEFINE DXOP AND REGISTERS USED
+;
+
+	DXOP	CALL,6
+	DXOP	RET,7
+	DXOP	PUSH,8
+	DXOP	POP,9
+	DXOP	WHEX,10		;WRITE OUT A 16 BIT HEX VALUE
+	DXOP	WRITE,12	;WRITE CHAR IN MSB
+;
+R0	EQU	0
+R1	EQU	1
+R2	EQU	2
+R3	EQU	3
+R4	EQU	4
+R5	EQU	5
+R9	EQU	9
+SP	EQU	10
+R11	EQU	11
+;
+;
+;
+;------call.a99:  Small-C arithmetic,logical and char and int io library
+;
+; Small C will call _setarg so that functions can retrieve the value
+; by calling the function _argcnt().
+; The call to this routine is a Branch and Link  (BL ..)
+;
+	NOP
+_setargc::
+	ANDI R1,00FFH
+	MOV R1,@_argcval##
+	RT
+
+; not used _ccargc::
+_argcnt::
+	MOV @_argcval##,R4					
+	RET
+	
+;Fetch a single byte from the address in R4 and
+; sign extend into R4
+;_ccgchar:: 
+;	MOVB *R4,R4
+;_ccsxt::	
+;	SRA	R4,8
+;	RT
+	
+;
+; IN ALL THE FOLLOWING COMPARE ROUTINES, R4 IS SET TO 1 IF THE
+; CONDITION IS TRUE, OTHERWISE IT I SET TO 0 (ZERO)
+;
+;
+;  TEST IF R4 = R3
+;
+_cceq::	
+		MOV	R4,R1
+		CLR	R4
+		C	R3,R1
+		JNE	$+4
+		INC	R4
+		RT
+;
+; TEST IF R3 != R4
+;
+_ccne::	
+		MOV	R4,R1
+		CLR	R4
+		C	R3,R1
+		JEQ	$+4
+		INC	R4
+		RT
+;
+; TEST IF R3 > R4  (SIGNED)
+;
+_ccgt::	
+		MOV	R4,R1
+		LI	R4,1
+		C	R3,R1
+		JGT	$+4
+		CLR	R4
+		RT
+;
+; TEST IF R3 <= R4 (SIGNED)
+;
+_ccle::	
+		MOV	R4,R1
+		CLR	R4
+		C	R3,R1
+		JGT	$+4
+		INC	R4
+		RT
+;
+; TEST IF R3 >= R4 (SIGNED)
+;
+_ccge::	
+	MOV	R4,R1
+	CLR	R4
+	C	R1,R3
+	JGT	$+4
+	INC	R4
+	RT
+;
+; TEST IF R3 < R4 (SIGNED)
+;
+_cclt::	
+	MOV	R4,R1
+	LI	R4,1
+	C	R3,R1
+	JLT	$+4
+	CLR	R4
+	RT	
+;
+; TEST IF R3 > R4 (UNSIGNED)
+;
+_ccuge::	
+	MOV	R4,R1
+	CLR	R4
+	C	R3,R1
+	JL	$+4
+	INC	R4
+	RT
+;
+; TEST IF R3 < R4 (UNSIGNED)
+;
+_ccult::
+	MOV	R4,R1
+	LI	R4,1
+	C	R3,R1
+	JL	$+4
+	CLR	R4
+	RT 
+;
+; TEST IF R3 > R4 (UNSIGNED)
+;
+_ccugt::	MOV	R4,R1
+	LI	R4,1
+	C	R3,R1
+	JH	$+4
+	INC	R4
+	RT
+;
+; TEST IF R3 <= R4 (UNSIGNED)
+;
+_ccule::	MOV	R4,R1
+	CLR	R4
+	C	R3,R1
+	JH	$+4
+	INC	R4
+	RT
+;
+; SHIFT R3 ARITHMETICALLY RIGHT BY R4 AND RETURN IN R4
+;
+_ccasr::	
+	MOV	R4,R0
+	MOV	R3,R1
+	SRA	R1,0		;SHIFT COUNT IN R0
+	MOV	R1,R4
+	RT
+;
+; SHIFT R3 ARITHMETICALLY LEFT BY R4 AND RETURN IN R4
+;
+_ccasl::
+	MOV	R4,R0
+	MOV	R3,R1
+	SLA	R1,R0		;SHIFT COUNT IN R0
+	MOV	R1,R4
+	RT
+	
+;
+;Form the two's complement of R4
+_ccneg::
+	NEG	R4
+	RT	
+	
+;
+;
+; LOGICAL NEGATION
+;
+_cclneg:: MOV 	R4,R1
+	JNE	$+6
+	INC	R4		;R4 := 1
+	B	*R11
+	CLR	R4
+	RT
+;
+; MULTIPYL R3 BY R4 AND RETURN IN R4 (SIGNED MULTIPLY)
+;
+_ccmult::
+	CLR	R5
+	MOV	R4,R1
+	JGT	$+6
+	NEG	R3
+	INC 	R5
+	MOV	R1,R1
+	JGT	$+6
+	NEG	R1
+	INC	R5
+	MPY	R1,R3
+	MOV	R4,R1
+	ANDI	R5,1
+	JEQ	$+4
+	NEG	R1
+	MOV	R1,R4
+	MOV	R2,R3
+	RT	
+;
+; DIVIDE R3 BY R4 AND RETURN QUOTIENT IN HL, AND
+; REMAINDER IN R3 (SIGNED DIVIDE)
+;
+_ccdiv::
+	CLR R5
+	MOV R4,R1 
+	MOV R3,R4
+	JGT $+6
+	NEG R4
+	INC R5
+	CLR R3
+	MOV R1,R1
+	JGT $+6
+	NEG R1
+	INC R5
+	DIV R1,R3
+	MOV R3,R1
+	MOV R4,R2
+	ANDI 	R5,1
+	JEQ	$+6
+	NEG	R1
+	NEG	R2
+	MOV	R1,R4
+	MOV	R2,R3
+	RT	
+;
+;
+; LOGICAL NEGATION
+;
+_cclneg::	 MOV 	R4,R1
+			JNE	$+6
+			INC	R4		;R4 := 1
+			B	*R11
+			CLR	R4
+			RT
+;
+;------SIGN EXTEND------
+;
+_ccsxt::
+			SETO	R0
+			CLR		R1
+			MOVB	R4,R1
+			JGT		_ccsxt0
+			MOVB	R4,R0
+			MOV		R0,R1
+_ccsxt0: 	SWPB	R1
+			MOV		R1,R4
+			RT
+;
+;
+;--------------------------------------------------------------
+;
+; EXECUTE "SWITCH" STATEMENT
+;
+;  R4   =  SWITCH VALUE
+; (SP)  -> SWITCH TABLE - IE RETURN ADDRESS FROM CALL
+;  DW      ADDR1, VALUE1
+;  DW 	   ADDR2, VALUE2
+;  ....
+;
+;  DW	   0
+; [JMP	default ]
+;  continuation 
+;---------------------------------------------------------------
+;
+
+_ccswitc::
+			MOV	*SP+,R3		;; R3 -> SWITCH TABLE, R4 = SWITCH VALUE
+			MOV	*R3+,R1		;; R1 -> CASE ADDR, ELSE 0
+			JEQ	SWEND		;; DEFAULT OR CONTINUATION CODE
+			C	*R3+,R4		;; COMPARE AGAINST TABLE
+			JNE	_ccswitc+2	;; NO MATCH
+			MOV	R1,R3		;; CASE MATCH
+SWEND	
+			B	*R3		;; GO TO CODE
+			END
+
+

@@ -1,0 +1,73 @@
+;
+; This is an external function called by
+; the Csyslib99 to interface with 
+; our BDOS
+;
+;
+;/*
+;** Issue CP/M function and return result.
+;** Entry: r2  = CP/M function code
+;**        r3  = CP/M parameter
+;** Returns the CP/M return code (register r1)
+;*/
+
+;
+;  DEFINE DXOP AND REGISTERS USED
+;
+
+	DXOP	CALL,6
+	DXOP	RET,7
+	DXOP	PUSH,8
+	DXOP	POP,9
+	DXOP	WHEX,10		;WRITE OUT A 16 BIT HEX VALUE
+	DXOP	WRITE,12	;WRITE CHAR IN MSB
+;
+R0	EQU	0
+R1	EQU	1
+R2	EQU	2
+R3	EQU	3
+R4	EQU	4
+R5	EQU	5
+R9	EQU	9
+SP	EQU	10
+R11	EQU	11
+
+BDOS:	EQU		84H
+SHELL	EQU		80H
+
+;_bdos(r2,r3) int r2;intr3; {
+;#asm
+;
+;  This should work as well
+;
+		NOP
+_cpm::		
+_bdos::	
+		MOV		*SP+,R4		;hold return address
+		MOV 	*SP+,R3		;load CP/M function parameter
+		MOV		*SP,R2		;load CP/M function number
+		AI		SP,-4		;restore the stack
+		CALL    @BDOS     	;call bdos must use call
+        MOV		R1,R4   	;return the CP/M response
+        RET
+
+_shell::
+		MOV		*SP+,R1		; this is the return value for SHELL
+		LI		R1,-1		;Force exit in shell for the moment - i.e. non procedure
+		B		@SHELL		;exit to shell
+
+	;
+	; old code
+	;	
+
+;		POP     R4       ;hold return address
+;       POP     R3       ;load CP/M function parameter
+;       POP     R2       ;load CP/M function number
+;       PUSH    R2       ;restore
+;       PUSH    R3       ;  the
+;       PUSH    R4       ;  stack
+;       BL	    @BDOS     ;call bdos
+;       MOV    R1,R4   ;return the CP/M response
+;       RT
+        END
+
