@@ -19,8 +19,6 @@
 	DXOP	RET,7
 	DXOP	PUSH,8
 	DXOP	POP,9
-	DXOP	WHEX,10		;WRITE OUT A 16 BIT HEX VALUE
-	DXOP	WRITE,12	;WRITE CHAR IN MSB
 ;
 R0	EQU	0
 R1	EQU	1
@@ -32,29 +30,29 @@ R9	EQU	9
 SP	EQU	10
 R11	EQU	11
 
-BDOS:	EQU		84H
-SHELL	EQU		80H
+BDOS:	EQU	84H
+SHELL	EQU	80H
 
 ;_bdos(r2,r3) int r2;intr3; {
 ;#asm
 ;
 ;  This should work as well
 ;
-		NOP
+	NOP
 _cpm::		
 _bdos::	
-		MOV		*SP+,R4		;hold return address
-		MOV 	*SP+,R3		;load CP/M function parameter
-		MOV		*SP,R2		;load CP/M function number
-		AI		SP,-4		;restore the stack
-		CALL    @BDOS     	;call bdos must use call
-        MOV		R1,R4   	;return the CP/M response
+	MOV	*SP+,R4		;hold return address
+	MOV 	*SP+,R3		;load CP/M function parameter
+	MOV	*SP,R2		;load CP/M function number
+	AI	SP,-4		;restore the stack
+	CALL    @BDOS     	;call bdos must use call
+        MOV	R1,R4   	;return the CP/M response
         RET
 
 _shell::
-		MOV		*SP+,R1		; this is the return value for SHELL
-		LI		R1,-1		;Force exit in shell for the moment - i.e. non procedure
-		B		@SHELL		;exit to shell
+	MOV	*SP+,R1		; this is the return value for SHELL
+	LI	R1,-1		;Force exit in shell for the moment - i.e. non procedure
+	B	@SHELL		;exit to shell
 
 	;
 	; old code
@@ -66,7 +64,7 @@ _shell::
 ;       PUSH    R2       ;restore
 ;       PUSH    R3       ;  the
 ;       PUSH    R4       ;  stack
-;       BL	    @BDOS     ;call bdos
+;       BL	@BDOS     ;call bdos
 ;       MOV    R1,R4   ;return the CP/M response
 ;       RT
         END
