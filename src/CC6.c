@@ -256,9 +256,11 @@ loadargc(n)
  * 16bit word values
  * R4 = [MSB|LSB] for 16bit values
  *
- * For Byte values (CCHAR) bytes are stored in the LSB of stack.
- *  Stack is always even memory that is
- *   	 [Don't Care |CCHAR ]
+ * For Byte values CHAR types are sign extended and
+ * stored in the LSB of stack. Stack is always even memory that is
+ *
+ *  SP ->  [0x00 | CHAR ]
+ *
  *
  */
 
@@ -392,7 +394,7 @@ zcall(sname)
 }
 
 /* Call a run-time library routine - Becasue theY don't call any other
- * routines we can use BL
+ * routines we can use BL and return using B *R11
  */
 callrts(sname)
 	char *sname; {
@@ -427,10 +429,6 @@ callstk(n)
 	int n; {
 	ol(";callstk()");
 	loadargc(n);
-/*	ol("\tLI R0,$+8");
-	ol("\tPUSH R0");
-	ol("\tB *R4");
-	*/
 	ol("\tCALL *R4");
 
 }
@@ -831,7 +829,7 @@ gt0(label)
 	/*	ge0(label) ; */
 	ol(";gt0(label)");
 	ol("\tMOV R4,R4");
-	ol("\tJGT $+6");
+	ol("\tJH $+6");
 	ot("\tB @");
 	printlabel(label);
 	nl();
