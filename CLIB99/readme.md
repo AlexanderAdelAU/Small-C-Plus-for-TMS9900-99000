@@ -1,1 +1,1 @@
-The CLIB contains the C libraries for the Small C compiler 
+The CLIB contains the essential C libraries for the Small C compiler 
