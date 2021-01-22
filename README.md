@@ -5,7 +5,8 @@ and includes floating point support as well as structures and unions and other s
 Small C version 2.1
 
 It is compiled using MingW GCC and therefore operates as a Cross Compiler however the C code is standard C and 
-should be able to self compile with the appropriate OS support on the target computer.
+should be able to self compile with the appropriate OS support on the target computer.  The Eclipse project files are included as a zip file that
+may help building and testing the compiler in your own environment.
 
 An IOLIB is included that supports CP/M compatible operating system calls.
 
