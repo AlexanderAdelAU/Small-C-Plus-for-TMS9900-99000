@@ -878,37 +878,37 @@ uge() {
 /* Test for floating equal */
 deq() {
 	fpcall("_fpeq##");
-	Zsp += 4;
+	Zsp += 6;
 }
 
 /* Test for floating not equal */
 dne() {
 	fpcall("fpne##");
-	Zsp += 4;
+	Zsp += 6;
 }
 
 /* Test for floating less than   (that is, TOS < FA)	*/
 dlt() {
 	fpcall("_fplt##");
-	Zsp += 4;
+	Zsp += 6;
 }
 
 /* Test for floating less than or equal to */
 dle() {
 	fpcall("_fple##");
-	Zsp += 4;
+	Zsp += 6;
 }
 
 /* Test for floating greater than */
 dgt() {
 	fpcall("_fpgt##");
-	Zsp += 4;
+	Zsp += 6;
 }
 
 /* Test for floating greater than or equal */
 dge() {
 	fpcall("_fpge##");
-	Zsp += 4;
+	Zsp += 6;
 }
 /*
  ** declare external reference
