@@ -11,8 +11,6 @@ R99 test\itox SCHCLC
 REM smallcp -C -M printf
 REM R99 printf SCHCLC
 smallcp -C -M printf2
- R99 printf2 SCHCLC
-REM
-lib99 -U clib99 printf2 itod itou utoi xtoi test\itox
+R99 printf2 SCHCLC
 
 
