@@ -16,7 +16,6 @@ A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz 
 
 A sample test programme is 
 
-
 #include "stdio.h"
 #include "float.h"
 
@@ -33,15 +32,15 @@ main (argc,argv) int argc; char *argv[]; {
 
 	dd = 2.545*10.0;
 	pstr = "2.545*10.0";
-	printf("\n1. %s = %6.3f",pstr,dd);
+	printf("\n2. %s = %6.3f",pstr,dd);
 
 	dd = 2.545+10.0;
 	pstr = "2.545+10.0";
-	printf("\n1. %s = %6.3f",pstr,dd);
+	printf("\n3. %s = %6.3f",pstr,dd);
 
 	dd = 2.545-10.0;
 	pstr = "2.545-10.0";
-	printf("\n1. %s = %6.3f",pstr,dd);
+	printf("\n4. %s = %6.3f",pstr,dd);
 
 	puts("\n Testing disc i/o");
 	
@@ -65,14 +64,17 @@ main (argc,argv) int argc; char *argv[]; {
 	printf("\nEnd of Test\n");
 }
 
+
+
+
 A output of running the above is shown below
 
 1. 2.545/10.0 =   .255
 2. 2.545*10.0 = 25.450
 3. 2.545+10.0 = 12.545
 4. 2.545-10.0 = -7.455
-5. 
- Testing disc i/o
+
+Testing disc i/o
 Output argc for main = 1
 Create new file test1 for writing fd = 9
 One character written...
