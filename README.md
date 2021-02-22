@@ -16,14 +16,13 @@ A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz 
 
 A sample test programme is 
 
+
 #include "stdio.h"
 #include "float.h"
 
 int i;
 int fd;
 double dd;
-
-
 main (argc,argv) int argc; char *argv[]; {
 	char ch;
 	char *pstr;
@@ -45,7 +44,8 @@ main (argc,argv) int argc; char *argv[]; {
 	printf("\n1. %s = %6.3f",pstr,dd);
 
 	puts("\n Testing disc i/o");
-    printf("\nOutput argc for main = %d\n",argc);
+	
+    	printf("\nOutput argc for main = %d\n",argc);
 	    for(i=1;i< argc;i++)
 	    {
 	        printf("%s%c",argv[i],(i<argc-1) ? ' ' : '\n');
