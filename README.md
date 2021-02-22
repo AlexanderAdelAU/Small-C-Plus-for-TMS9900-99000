@@ -13,3 +13,71 @@ includes, FPADD, FPMUL,FPSUB and FPDIV.   Other functions such as trancedentals 
 was ported from a Z80 Floating Point library.
 
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
+
+A sample test programme is 
+
+#include "stdio.h"
+#include "float.h"
+
+int i;
+int fd;
+double dd;
+
+
+main (argc,argv) int argc; char *argv[]; {
+	char ch;
+	char *pstr;
+
+	dd = 2.545/10.0;
+	pstr = "2.545/10.0";
+	printf("\n1. %s = %6.3f",pstr,dd);
+
+	dd = 2.545*10.0;
+	pstr = "2.545*10.0";
+	printf("\n1. %s = %6.3f",pstr,dd);
+
+	dd = 2.545+10.0;
+	pstr = "2.545+10.0";
+	printf("\n1. %s = %6.3f",pstr,dd);
+
+	dd = 2.545-10.0;
+	pstr = "2.545-10.0";
+	printf("\n1. %s = %6.3f",pstr,dd);
+
+	puts("\n Testing disc i/o");
+    printf("\nOutput argc for main = %d\n",argc);
+	    for(i=1;i< argc;i++)
+	    {
+	        printf("%s%c",argv[i],(i<argc-1) ? ' ' : '\n');
+	    }
+
+	fd = fopen("test1","w");
+	printf ("Create new file test1 for writing fd = %d\n",fd);
+	ch = putc('T',fd);
+	printf("One character written...\n");
+	fclose(fd);
+
+	fd = fopen("test1","r");
+	printf ("Open file test1 for reading fd = %d\n",fd);
+	ch = getc(fd);
+	printf ("Output char  = %c\n",ch);
+	fclose(fd);
+	printf("\nEnd of Test\n");
+}
+
+A output of running the above is shown below
+
+1. 2.545/10.0 =   .255
+2. 2.545*10.0 = 25.450
+3. 2.545+10.0 = 12.545
+4. 2.545-10.0 = -7.455
+5. 
+ Testing disc i/o
+Output argc for main = 1
+Create new file test1 for writing fd = 9
+One character written...
+Open file test1 for reading fd = 9
+Output char  = T
+
+End of Test
+%
