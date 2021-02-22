@@ -822,7 +822,7 @@ declloc(typ, otag)
 				type = CINT;
 			}
 			size = needsub();
-			if (size & 1 ) size++;			/*Keep PC even */
+			if (size & 1 ) size++;			/*Keep PC even on stack*/
 			ident = ARRAY; /* null subscript array is NOT a pointer */
 			cscale(type, otag, &size);
 		} else if (ident == PTR_TO_PTR) {

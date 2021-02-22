@@ -105,7 +105,7 @@ plnge2a(heir, lval, lval2, oper, uoper, foper)
 	} else {
 		/* non-constant on left */
 		if (lval->val_type == CCHAR)
-			cpush(); /* [AC] for 9900 */
+			cpush(); 				/* [AC] for TMS9900 */
 		else if (lval->val_type == FLOAT)
 			fpush();
 		else
@@ -735,7 +735,7 @@ heirb(lval)
 			} else if (cmatch('(')) {
 				if (ptr == 0) {
 					callfunction(NULL_SYM);
-					/*	return k;  /* [AC] not proven to fix dropout routing */
+					/* [AC] can't have ptr == 0 falling through need to fix */
 					return 0;
 				} else if (ptr->ident != FUNCTION) {
 					if (k && lval->const_val == 0)

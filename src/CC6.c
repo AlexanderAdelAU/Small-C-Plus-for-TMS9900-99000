@@ -161,7 +161,7 @@ getloc(sym, off)
 
 	if (sym->type == CCHAR && sym->ident != POINTER) {
 		ol(";Char offset");
-		offset += 1;   /* [AC-9900] Need to offset as CCHAR takes two bytes on the stack */
+		offset += 1;   			/* [AC-9900] Need to offset as CCHAR takes two bytes on the stack */
 	}
 	if (offset) {
 		ot("\tLI  R4,");
@@ -194,10 +194,14 @@ putmem(sym)
 	}
 }
 
-/* Store the specified object type in the primary register */
-/*	at the address on the top of the stack  - because it is on the stack
-/*  the char must be stored as a word  i.e. in the LSB*/
-/* [AC]  modify to use lval so that we can use the lval->val_type  */
+/* Store the specified object type in the primary register
+*	at the address on the top of the stack  - because it is on the stack
+*  the char must be stored as a word  i.e. in the LSB.
+*
+*  WP is loaded at the start of the programme to point to the current workspace
+*
+*/
+
 putstk(lval)
 	LVALUE *lval;
 /* char typeobj; */
@@ -233,6 +237,7 @@ put2tos() {
 	/*	ol("\tMOV @2(SP),R2"); /* Probably redundant and not needed */
 	ol("\tMOV R4,@2(SP)");
 }
+
 
 /*
  * loadargc - load accumulator with number of args
@@ -351,6 +356,7 @@ fpush() {
 
 /* Push the primary floating point register, preserving
  the top value  */
+/* TODO AC 9900  Need to just push R4 */
 fpush2() {
 	ol(";fpush2()");
 	fpcall("_fpush2##");
@@ -776,7 +782,7 @@ eq0(label)
 	ol(";eq0(label)");
 	ol("\tMOV R4,R4");
 	ol("\tJEQ $+6");
-	ot("\tB @");
+	ot("\tB @");			/* Branch if not equal */
 	printlabel(label);
 	nl();
 }
@@ -798,9 +804,10 @@ lt0(label)
 	ol("\tMOV R4,R4");
 	ol("\tJLT $+6");
 	ot("\tB @");
-	printlabel(label);
+	printlabel(label);   /* Branch if positive */
 	nl();
 }
+
 
 /* Test for less than or equal to (signed) */
 zle() {
@@ -808,6 +815,8 @@ zle() {
 }
 
 /* Test for less than or equal to zero */
+
+/*
 le0(label)
 	int label; {
 	ol(";le0(label)");
@@ -816,7 +825,20 @@ le0(label)
 	ot("\tB @");
 	printlabel(label);
 	nl();
+}*/
+
+/* Test for less than or equal to zero */
+le0(label)
+	int label; {
+	ol(";le0(label)");
+	ol("\tMOV R4,R4");
+	ol("\tJEQ $+8");
+	ol("\tJLT $+6");
+	ot("\tB @");		/* Branch if positive */
+	printlabel(label);
+	nl();
 }
+
 
 /* Test for greater than (signed) */
 zgt() {
@@ -826,14 +848,14 @@ zgt() {
 /* test for greater than zero */
 gt0(label)
 	int label; {
-	/*	ge0(label) ; */
 	ol(";gt0(label)");
 	ol("\tMOV R4,R4");
-	ol("\tJH $+6");
-	ot("\tB @");
+	ol("\tJGT $+6");		/* Jump is A >   */
+	ot("\tB @");			/* Branch if zero or less than  */
 	printlabel(label);
 	nl();
 }
+
 
 /* Test for greater than or equal to (signed) */
 zge() {
@@ -844,10 +866,11 @@ zge() {
 ge0(label)
 	int label; {
 	ol(";ge0(label)");
-	ol("\tMOV R4,R4");
-	ol("\tJHE $+6");
+	ol("\tMOV  R4,R4");
+	ol("\tJEQ  $+8");
+	ol("\tJGT  $+6");
 	ot("\tB @");
-	printlabel(label);
+	printlabel(label);			/* Jump if sign bit set */
 	nl();
 }
 

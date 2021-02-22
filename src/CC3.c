@@ -59,7 +59,7 @@ SYMBOL *ptr;	/* symbol table entry (or 0) */
 				nargs += 2;
 			}
 		}
-		else { /* call to address in HL */
+		else { /* call to address in R4 */
 			zpush();	/* push argument */
 			if(expression(&con, &val)==FLOAT) {
 				fpush2();

@@ -565,6 +565,7 @@ fnumber(val)
 
 	start = s = line + lptr; /* save starting point */
 	k = minus = 1;
+
 	--s;  /* back up to sign */
 	while (k) {
 
@@ -577,6 +578,7 @@ fnumber(val)
 			++s;
 			k = 1;
 			minus = (-minus);
+		/*	toconsole(); */
 		}
 	}
 	s++; /* reset the pointer */
@@ -628,8 +630,8 @@ fnumber(val)
 		else
 			sum *= scale;
 	}
-	if (minus < 0);
-	/*	sum = (-sum); */
+	/*if (minus < 0);
+		sum = (-sum);*/
 	if (litptr + 6 >= LITMAX) { /* Number of bytes per FP representation */
 		error("string space exhausted");
 		return 0;
