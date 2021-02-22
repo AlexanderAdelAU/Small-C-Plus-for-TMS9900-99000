@@ -17,7 +17,6 @@ A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz 
 A sample test programme is 
 
 ```
-'''
 #include "stdio.h"
 #include "float.h"
 
@@ -66,13 +65,8 @@ main (argc,argv) int argc; char *argv[]; {
 	printf("\nEnd of Test\n");
 }
 
-
-
-
-'''
-
 ```
-
+```
 A output of running the above is shown below
 
 1. 2.545/10.0 =   .255
@@ -89,3 +83,4 @@ Output char  = T
 
 End of Test
 %
+```
