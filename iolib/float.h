@@ -29,9 +29,4 @@ double float();
 */
 extern ifix();
 double _ccifix();
-/*ifix ()
 
-{
-	return _ccifix();
-}
-*/
