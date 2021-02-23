@@ -7,8 +7,9 @@
 #include "ccdefs.h"
 #include "cclvalue.h"
 #include "ccfunc.h"
-typedef long unsigned real;
-#define asreal(x) (*((float *) &x))
+typedef long long unsigned int real;
+#define asreal_f(x) (*((float *) &x))
+#define asreal_d(x) (*((double *) &x))
 
 char fval[16];
 /*
@@ -550,14 +551,12 @@ constant(lval)
 fnumber(val)
 	int *val; {
 	char *val2;
-	char *dp; /* used to store the result */
+	unsigned char *dp; /* used to store the result */
 	double sum, /* the partial result */
 	scale; /* scale factor for next digit */
-	real itoz80;
-	int mant;   /* mantissa part of the FP number */
-	int signbit; /*  sign bit  */
-	char expon; /*exponent */
-	char m48exp; /*m48 exponent */
+	real fpnum;
+	char signbit; /*  sign bit  */
+
 	int k, /* flag and mask */
 	minus; /* negative if number is negative */
 	char *start, /* copy of pointer to starting point */
@@ -642,33 +641,30 @@ fnumber(val)
 	litptr += 6; /* Number of bytes per FP representation */
 	/* *dp = sum; /* store result */
 
-	asreal(itoz80) = sum;
-	mant = itoz80 & 0x7fffff;
-	signbit = itoz80 >> 31;
-	if (signbit == 1) signbit = 0x80;
-	expon = (itoz80 >> 23) & 0xff ;
+	asreal_d(fpnum) = sum;
 	/*
 	 * Now IEE exponent is e-127 = exp2 where 2^exp is the radix 2 exponent
 	 * As M48 exponent is L+128 (as FP = 0 means L = 0) then we can convert to
 	 * M48 using L=e-127 + 128 + 1 = e + 2;   The + 1 is do to L = 0 for fp of zero
 	 */
-	m48exp =  expon + 2;  	/* Add one for M48 FP format */
-	if (expon == 0) m48exp = 0;
 
-	dp[0] = signbit + (mant >> 16) & 0xFF;
 
-	printf("sign... number is  = %x\n", signbit + mant >> 16);
-	dp[1] = (mant >> 8) & 0xff;
-	dp[2] = (mant) & 0xff;
-	dp[3] = 0;  /*(mant >> 0) & 0xff; */
-	dp[4] = 0; /*(mant >> 0) & 0xff; */
-	dp[5] = m48exp;
+	signbit = ((fpnum >> 56) & 0x80);
+	dp[0] = ((fpnum >> 45) & 0x7f) | signbit;
+	dp[1] = (fpnum >> 37) & 0xff;
+	dp[2] = (fpnum >> 29) & 0xff;
+	dp[3] = (fpnum >> 21) & 0xff;
+	dp[4] = (fpnum >> 13) & 0xff;
+	dp[5] = ((fpnum >> 52) & 0x7f)| ((fpnum >> 55) & 0x80);
+	dp[5] += 2; /* fix up the exponent */
 
-	printf("fp number is  = %f\n", sum);
-	printf("fp hex prepresentation is  = %x\n", itoz80);
-	printf("sign bit = %x\n", itoz80 >> 31);
-	printf("exp = %x\n", ((itoz80>>23) & 0xff));
-	printf("mantissa = %x\n", ((itoz80 & 0x7FFFFF) | 0x800000));
+
+	printf("\n%02hhx",dp[0]);
+	printf("%02hhx",dp[1]);
+	printf("%02hhx",dp[2]);
+	printf("%02hhx",dp[3]);
+	printf("%02hhx",dp[4]);
+	printf("%02hhx",dp[5]);
 
 	return 1; /* report success */
 }
