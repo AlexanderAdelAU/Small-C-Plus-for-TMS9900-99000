@@ -25,23 +25,23 @@ int fd;
 double dd;
 main (argc,argv) int argc; char *argv[]; {
 	char ch;
-	char *pstr;
+	char str[32];
 
 	dd = 2.545/10.0;
-	pstr = "2.545/10.0";
-	printf("\n1. %s = %6.3f",pstr,dd);
+	strcpy(str, "2.545/10.0");
+	printf("\n1. %s = %6.3f",str,dd);
 
 	dd = 2.545*10.0;
-	pstr = "2.545*10.0";
-	printf("\n2. %s = %6.3f",pstr,dd);
+	strcpy(str, "2.545*10.0");
+	printf("\n2. %s = %6.3f",str,dd);
 
 	dd = 2.545+10.0;
-	pstr = "2.545+10.0";
-	printf("\n3. %s = %6.3f",pstr,dd);
+	strcpy(str, "2.545+10.0");
+	printf("\n3. %s = %6.3f",str,dd);
 
 	dd = 2.545-10.0;
-	pstr = "2.545-10.0";
-	printf("\n4. %s = %6.3f",pstr,dd);
+	strcpy(str, "2.545-10.0");
+	printf("\n4. %s = %6.3f",str,dd);
 
 	puts("\n Testing disc i/o");
 	
