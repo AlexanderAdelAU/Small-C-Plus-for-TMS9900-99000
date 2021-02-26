@@ -235,8 +235,8 @@ _fpswap::
 ;	R4+4	|	R7	|				FPA+4	R7
 ;
 _fload::	LI		R0,FPA			;Begin at register R5
-			LI		R8,3			;3 words
-FLD1:		MOV 	*R4+,*R0+		;Move byte at a time
+			LI		R8,6			;3 words
+FLD1:		MOVB 	*R4+,*R0+		;Move byte at a time
 			DEC		R8
 			JNE		FLD1
 			RET
@@ -251,8 +251,8 @@ FLD1:		MOV 	*R4+,*R0+		;Move byte at a time
 ;	STORE FROM FPA TO THE ADDRESS IN R4
 ;
 _fstore::	LI		R0,FPA			;Begin at Register 5
-			LI		R8,3
-FST1:		MOV		*R0+,*R4+
+			LI		R8,6
+FST1:		MOVB	*R0+,*R4+
 			DEC		R8
 			JNE		FST1
 			RET
@@ -349,14 +349,12 @@ FPADD:		TMB		R5',0			;Is AC' Negative?
 			B		@SUB1			;Yes => SUB1
 
 ADD1:   	MOVB	@2*R7'+1(WP),R0	;Is AC' zero?
-			JNE		ADD1A
-			JMP		ADD10			;Just return AC
-       		RET  		      		;Yes => Return
+			JEQ		ADD10
 ;
 ; At this point we have AC and AC' populated and we know
 ; that AC' is both non zero and positive
 ;
-ADD1A:    	MOVB	@2*R7+1(WP),R0	;Is AC zero?
+	    	MOVB	@2*R7+1(WP),R0	;Is AC zero?
         	JNE		ADD2    		;No => ADD2
 	     	CALL	@EXX			;Return AC'
         	ANDI	R5, CLR_SIGN	;Make AC' Positive
@@ -410,7 +408,7 @@ ADD4:   	POP		R0				;Get the AC sign
 			MOVB	@2*R7+1(WP),R0
 			AI		R0,256			;Increment exponent
 			MOVB	R0,@2*R7+1(WP)
- 	        JNE		ADD9
+ 	        JNE		ADD9A			;Sign is positive
 	        JMP		ADD10			;Overflow
 
 ;For CMPAC
@@ -437,7 +435,6 @@ ADD7:   	SETO	R4				;Set to -1
 			JEQ		ADD8			;Yes => ADD8
         	CALL 	@SLEFT      	;Shift left one bit
         	MOVB	@2*R7+1(WP),R0	;Check for zero
-        	JEQ		ADDZ			;Yes => AC to zero
         	AI		R0,-256			;Subtract 1 from exponent
          	MOVB	R0,@2*R7+1(WP)	;Update it
          	JEQ		ADDZ     		;No  => AC zero
@@ -543,9 +540,7 @@ FP_RET:		RET
 ;					|R6 AC result								|
 ;					|R7 AC result								|
 ;
-_fpdiv::
-
-			CALL	@GETAC'				;Get AC' off the stack
+_fpdiv::	CALL	@GETAC'				;Get AC' off the stack
 			CALL	@GETAC				;Get AC from FPA now are now ready for AC/AC'
 			CALL	@EXX
 
@@ -563,7 +558,7 @@ DIVI_B:		SB		R0,R4      			;Adjust exponent by calling EXPSGN with R4
         	AI		WP2,-32				;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
 										;Higher registers are not used as they will be overwritten during calls
 										;to SRIGHT, SLEFT etc which use registers WP2->R13 and WP2->R14
-			LI		R0,5				;Note, the code supports 5 bytes (40bit) but the small C compiler is configured
+			LI		R0,5				;Note, the code supports 5 bytes (40bit)
 			MOV		R0,@2*R3(WP2)		;WP2->R3 holds the number of bytes in mantissa
 			MOV		WP2,R8				;Get Stack Workspace Pointer
 			AI		R8,2*R5				;R8 -> first byte of the result on the stack, i.e. WP2->R5
@@ -672,11 +667,9 @@ MUL1_B:		AB		R0,R4      			;Adjust exponent by calling EXPSGN with R4
         	MOV		SP,WP2				;WP2 will be used as Workspace Pointer on the stack
         	AI		WP2,-32				;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
 										;Higher registers are not used as they will be overwritten during calls
-			MOV		WP2,R0				;Get Stack Workspace pointer
-			AI		R0,2*R5				;Point to first byte of AC on the stack
-			MOV		R0,@2*R3(WP2)		;Save it as a pointer to the stack result
+			LI		R0,5				;Note, the code supports 5 bytes (40bit)
+			MOV		R0,@2*R3(WP2)		;WP2->R3 holds the number of bytes in mantissa
 
-;
 ;  CALL EXPSGN to
 ;  1.Exclusive OR Signs to get Resultant Sign
 ;  2.Subtract Divisor Exponenet from Dividend Exponent
@@ -708,8 +701,8 @@ MUL3:		CALL	@RIGHT				;Rotate result to the right 1 bit
 			DEC		@2*R2(WP2)			;Finished with this byte?
 			JNE		MUL2				;No => MUL2
 			DEC		R8					;Point to next byte to the left
-			C		R8,@2*R3(WP2)		;Have we finished with AC?
-			JHE		MUL1				;5 Bytes completed?
+			DEC		@2*R3(WP2)			;Have we finished with AC?
+			JNE		MUL1				;5 Bytes completed?
 ;
 ; Fixup exponent
 ;
@@ -741,7 +734,6 @@ MULSA1:		CALL	@PUTAC
 ; WP2 points to the workspace on the stack
 ;
 ;
-
 EXPSGN:		LST		ST					;What was the result of AB R0,R4?
 			JOC		EXPS1				;If greater than i.e MSB == 0 (Carry => EXPS1)
 			AI		R4,EXPN*256			;Adjust exponent for radix 2
@@ -785,9 +777,6 @@ ADDAC:  	PUSH	R6'
 			CLR		R0
 			INC		R0
 			STST	ST				;Set default flag to no carry
-
-			JMP		AAC1  		;Full FP resolution not yet implemented
-
 			AB		R7',R7
 			JNC		AAC1
 			INC		R6'
@@ -834,9 +823,6 @@ AAC3:		POP		R5'
 SUBAC: 		PUSH	R5'
 			PUSH	R6'
 			CLR		R0
-
-			JMP	SUBAC1   ;temp as only r6 and r7 are used at present
-
 			CB		R7',R7
 			JLE		SUBAC1
 			INC		R6'
@@ -1043,7 +1029,7 @@ CMPX2:   	CB		@2*R7+1(WP),@2*R7'+1(WP)
 
 INT:    	CLR		R4
 			LI		R0,256*(EXPN+1)
-			MOVB	@2*R7+1(WP),R4      ;Is exponentially smaller
+			MOVB	@2*R7+1(WP),R4      ;Is exponentially smaller the 0x81
         	SB  	R0,R4 				;than zero? DA-SA => DA
         	JLT		INT3				;Yes => Result zero
 
