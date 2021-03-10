@@ -658,14 +658,14 @@ fnumber(val)
 	dp[5] = ((fpnum >> 52) & 0x7f)| ((fpnum >> 55) & 0x80);
 	dp[5] += 2; /* fix up the exponent */
 
-
+/*
 	printf("\n%02hhx",dp[0]);
 	printf("%02hhx",dp[1]);
 	printf("%02hhx",dp[2]);
 	printf("%02hhx",dp[3]);
 	printf("%02hhx",dp[4]);
 	printf("%02hhx",dp[5]);
-
+*/
 	return 1; /* report success */
 }
 
