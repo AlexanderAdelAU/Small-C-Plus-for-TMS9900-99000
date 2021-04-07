@@ -1,0 +1,238 @@
+;* * *  Small-C/Plus  Version 1.01 for TMS99105A  * * *
+;       Cain, Van Zandt, Hendrix, Yorston and Cameron
+;       25th February 1988 - 22 May, 2015;
+;
+R0	EQU 0
+R1	EQU 1
+R2	EQU 2
+R3	EQU 3
+R4	EQU 4
+R8	EQU 8
+SL	EQU 9
+SP	EQU 10
+WP	EQU 13
+R11	EQU 11
+	DXOP CALL,6
+	DXOP RET,7
+	DXOP PUSH,8
+	DXOP POP,9
+	DXOP WHEX,10
+	DXOP WRITE,12    ;WRITE CHAR IN MSB 
+
+;-------- START MODULE -----------
+	NAM float\float
+;#include "float.h"
+;extern double floor();
+;extern double float();
+;extern int ifix();
+;extern double sin();
+;extern double cos();
+;extern double tan();
+;extern double pow();
+;extern double _ccfloor();
+;extern double _ccfloat();
+;extern double _ccpow();
+;extern double _ccsin();
+;extern double _cctan();
+;extern double _cccos();
+;extern double _ccifix();
+;/*
+; *	fp floor function
+; */
+;floor (x)
+	EVEN
+floor:
+;double x;
+;{
+;modstk(newsp,save)
+;	return _ccfloor(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccfloor
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;float (x)
+	EVEN
+float:
+;int x;
+;{
+;	return _ccfloat(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect ccgint
+	MOV *R4,R4
+;zpush()
+	DECT SP
+	MOV R4,*SP
+;zcall()
+	CALL @_ccfloat
+;modstk(newsp,save)
+	INCT SP
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;ifix (x)
+	EVEN
+ifix:
+;double x;
+;{
+;	return _ccifix(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccifix
+;modstk(newsp,save)
+	AI SP,6
+;fpcall()
+	CALL @_ifix##
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;sin(x)
+	EVEN
+sin:
+;double x;
+;{
+;	return _ccsin(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccsin
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;cos(x)
+	EVEN
+cos:
+;double x;
+;{
+;	return _cccos(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cccos
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;tan(x)
+	EVEN
+tan:
+;double x;
+;{
+;	return _cctan(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cctan
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+;pow(x,y)
+	EVEN
+pow:
+;double x,y;
+;{
+;	return _ccpow(x,y);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccpow
+;modstk(newsp,save)
+	AI SP,12
+;modstk(newsp,save)
+	RET
+;}
+	EVEN
+	EXT _cccos
+	EXT _cctan
+	ENT ifix
+	EXT _ccsin
+	EXT _ccpow
+	EXT _ccifix
+	ENT float
+	ENT floor
+	ENT cos
+	ENT tan
+	ENT sin
+	ENT pow
+	EXT _ccfloat
+	EXT _ccfloor
+	EVEN
+	END
+
+; --- End of Compilation ---
