@@ -6,8 +6,8 @@
  *
  *	R M Yorston 1987
  */
-
 #include "stdio.h"
+#include "float.h"
 
 /*
  #define NULL 0
