@@ -19,7 +19,6 @@ A sample test programme which calculate the double integral for the following fu
 ```
 	zd = cos(pi * cos(x) / 2.0) * cos(pi * (1.0 - sin(x) * cos(y)) / 4.0);
 	zd = pow(zd, 2.0)/sin(x);
-	return (fabs(zd));
 ```
 
 is shown below
