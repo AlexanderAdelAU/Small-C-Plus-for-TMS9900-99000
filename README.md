@@ -21,7 +21,7 @@ A sample test programme which calculates the double integral for the following f
 	zd = pow(zd, 2.0)/sin(x);
 ```
 
-using Simpson's Rule, is shown below
+using Simpson's Rule, is shown below.  This is a very good test of the Floating Point library.
 
 ```
 /*
