@@ -363,8 +363,6 @@ ADD1:   	MOVB	@2*R7'+1(WP),R0	;Is AC' zero?
 ; that AC' is both non zero and positive
 ;
 	    	CALL	@PUSHAC'		;Need to preserve AC'
-
-
 	    	MOVB	@2*R7+1(WP),R0	;Is AC zero?
         	JNE		ADD2    		;No => ADD2
 	     	CALL	@EXX			;Return AC'
@@ -440,7 +438,6 @@ ADD5:		CALL 	@CMPAC      	;Compare AC to AC'
 ;
 			JH		ADD6     		;AC>AC' => ADD6
 			CALL	@EXX			;AC<AC' => Swap
-
 
 ADD6:   	CALL 	@SUBAC      	;MANT=MANT-MANT'
 
@@ -814,7 +811,7 @@ ADDAC:  	PUSH	R6'				;Preserve AC'
 
 ; Now add the other registers together
 
-AAC1:		AB		R6',R6
+AAC1:		A		R6',R6
 			JNC		AAC2
 			INC		R5'
 			JNC		AAC2
