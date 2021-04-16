@@ -142,7 +142,8 @@ double zd;
 
 ```
 ```
-A output of running the above is shown below
+A output of running the above is shown below.
+
 %fptest
 
 Double integration parameters: 
