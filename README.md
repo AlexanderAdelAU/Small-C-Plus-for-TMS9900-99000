@@ -14,14 +14,14 @@ was ported from a Z80 Floating Point library.
 
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
 
-A sample test programme which calculate the double integral for the following function
+A sample test programme which calculates the double integral for the following function
 
 ```
 	zd = cos(pi * cos(x) / 2.0) * cos(pi * (1.0 - sin(x) * cos(y)) / 4.0);
 	zd = pow(zd, 2.0)/sin(x);
 ```
 
-is shown below
+using Simpson's Rule, is shown below
 
 ```
 /*
