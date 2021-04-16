@@ -655,8 +655,8 @@ fnumber(val)
 	dp[2] = (fpnum >> 29) & 0xff;
 	dp[3] = (fpnum >> 21) & 0xff;
 	dp[4] = (fpnum >> 13) & 0xff;
-	dp[5] = ((fpnum >> 52) & 0x7f)| ((fpnum >> 55) & 0x80);
-	dp[5] += 2; /* fix up the exponent */
+	dp[5] = ((fpnum >> 52) & 0x7f)|((fpnum >> 55) & 0x80);
+	if (dp[5] != 0) dp[5] += 2; /* fix up the exponent */
 
 /*
 	printf("\n%02hhx",dp[0]);
