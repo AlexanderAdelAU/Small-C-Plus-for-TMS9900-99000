@@ -137,18 +137,10 @@ double zd;
 ```
 A output of running the above is shown below
 
-1. 2.545/10.0 =   .255
-2. 2.545*10.0 = 25.450
-3. 2.545+10.0 = 12.545
-4. 2.545-10.0 = -7.455
+Double integration parameters: 
+ Step size hx and hy:    0.314159,  0.785398
+ Number of steps (x,y): 10,8
 
-Testing disc i/o
-Output argc for main = 1
-Create new file test1 for writing fd = 9
-One character written...
-Open file test1 for reading fd = 9
-Output char  = T
-
-End of Test
+Result =   3.783151
 %
 ```
