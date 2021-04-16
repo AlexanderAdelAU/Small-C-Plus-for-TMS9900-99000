@@ -143,6 +143,7 @@ double zd;
 ```
 ```
 A output of running the above is shown below
+%fptest
 
 Double integration parameters: 
  Step size hx and hy:    0.314159,  0.785398
