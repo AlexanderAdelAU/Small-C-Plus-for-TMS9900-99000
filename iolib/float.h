@@ -8,4 +8,6 @@ extern double tan();
 extern double pow();
 extern double fabs();
 extern double log();
+extern double log10();
 extern double exp();
+extern double fmod();
