@@ -10,6 +10,8 @@ extern double _ccifix();
 extern double _ccfabs();
 extern double _cclog();
 extern double _ccexp();
+extern double _ccmod();
+extern double _cclog10();
 /*
  *	fp floor function
  */
@@ -64,6 +66,12 @@ double x;
 	return _cclog(x);
 }
 
+log10(x)
+double x;
+{
+	return _cclog10(x);
+}
+
 exp(x)
 double x;
 {
@@ -74,6 +82,12 @@ pow(x,y)
 double x;double y;
 {
 	return _ccpow(x,y);
+}
+
+fmod(x,y)
+double x;double y;
+{
+	return _ccmod(x,y);
 }
 
 
