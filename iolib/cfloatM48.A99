@@ -1071,7 +1071,8 @@ FRAC:   	CALL	@PUSHAC'
 ;
 ; X MOD Y is calculated by FRAC (X / Y) * Y
 ;
-_fpmod::	CALL	@GETCCARG				;Get XY into AC and AC'
+_ccmod::	CALL	@GETCCARG			;Get X Y into AC and AC'
+			CALL	@EXX				;AC = X, AC' = Y
 
 MOD:    	CALL 	@FPDIV
         	JOC		MOD1
@@ -1099,9 +1100,7 @@ SQR:    	MOVB	@2*R7+1(WP),R4			; Is AC null?
         	JNE		MOD1				;Yes => Return
 
         	CALL	@EXX             	;Save AC'
-        	PUSH 	R5
-        	PUSH 	R6
-        	PUSH 	R7
+			CALL	@PUSHAC
         	CALL	@EXX
        		CALL 	@EQUAL      		;AC'= AC
         	AI		R4,EXPN*256     	;First iteration, e.g. 0x82 -> 0x02
@@ -1111,24 +1110,16 @@ SQR:    	MOVB	@2*R7+1(WP),R4			; Is AC null?
         	PUSH 	R4         			;Save s. value for routine below
         	CALL	@EXX
 
-SQR1:   	PUSH 	R5         			;Save the number
-        	PUSH 	R6
-        	PUSH 	R7
+SQR1:   	CALL	@PUSHAC         			;Save the number
         	CALL 	@FPDIV      		;Divide by and add
         	CALL 	@FPADD      		;previous go
         	DEC  	R7         			;Half value (LSB of R7 is exponent)
-        	PUSH 	R5         			;Save this go
-        	PUSH	R6
-        	PUSH 	R7
+        	CALL	@PUSHAC         			;Save this go
         	CALL 	@FPSUB      		;Calculate the difference between
         	MOVB	@2*R7+1(WP),R4      ;the two
-        	POP  	R7         			;Get the new goal
-        	POP  	R6
-        	POP  	R5
+        	CALL	@POPAC         		;Get the new goal
         	CALL	@EXX
-        	POP  	R7         			;Get the number
-       		POP  	R6
-        	POP  	R5
+        	CALL	@POPAC         		;Get the number
         	CB		*SP,R4				;Continue until done.
         	JLT		SQR1				;;is small enough
         	MOV		*SP+,R0         	;Remove s. value
@@ -1315,7 +1306,7 @@ ODD:		CALL	@MINUSFPA
 ;
 ; - Stack offset is 2 due to two return addresses
 ;
-_ccfloat::	MOV		@2(SP),R4		;Get integer off of Stack to -> R4
+_ccfloat::	MOV		@2(SP),R4		;Get integer off the Stack to -> R4
 ;
 ;Small C Library call entry for float is _float::
 ;
@@ -1511,29 +1502,36 @@ _ceil::		CALL	@ODD
 ;  see https://stackoverflow.com/questions/24158625/is-it-possible-for-floor-to-return-an-inaccurate-result-due-to-floating-point#:~:text=The%20floor()%20function%20returns,that%20is%20an%20exact%20integer.&text=In%20other%20words%2C%20the%20true,arithmetic%20is%20less%20than%20i%20.
 ;
 ;floor(x) <= x
-;FLOOR::
+;
+;	X	floor	Ceiling		Fractional Part
+;	2		2		2			0
+;	2.4		2		3			0,4
+;	2.9		2		3			0.4
+;	-2.7 	-3		-2			0.3
+;	-2		-2		-2			0
 ;
 ; Function call entry point
+; TODO ADD CHECK FOR SMALLEST NUMBER, WHICH MAY APPLY FOR LARGE NEGATIVE NUMBERS
 ;
 
-_ccfloor::	CALL	@GETCCARG		;Get AC but don't disturb the stack
-			B		@INT
+_ccfloor::	CALL	@GETCCARG			;Get AC but don't disturb the stack
+			CALL	@EQUAL				;Copy to AC'
+			CALL	@INT
+			TMB		R5,0
+			JNE		FLR1				;Positive then this is floor
+			CALL	@EXX
+			CALL	@FRAC
+			CALL	@EXX				;;AC' = FRAC(X), AC = INT(X)
+			MOVB	@2*R7'+1(WP),R4		;fetch exponent
+			JEQ		FLR1				;We have floor(-x)
+			CALL	@EXX
+			CALL 	@AC1
+			TSMB	R5,0				;Make AC Negative
+			CALL	@FPADD
+FLR1:		B		@ADD_PAC
 ;
 ; Library call entry point
 ;
-
-_floor::
-			MOVB	@2*R7+1(WP),R4		;fetch exponent
-			LI		R0,	0D9H*256	;(was A8H) larget negative exponent
-			CB		R4,R0
-			JLE		FLR1			;nc => binary point is right of lsb
-			RET
-
-FLR1:		CALL	@INT2
-			LI		R0,0D9H*256
-			MOVB	R0,@FPA+5
-			RET
-
 ;
 ;    Base 10 Logarithm
 ;
@@ -1549,9 +1547,6 @@ FLR1:		CALL	@INT2
 _cclog10::	CALL	@GETCCARG					;FPA -> AC
 LOG:    	CALL 	@LN
         	JOC		LOG_RET
-         	PUSH 	R5'
-        	PUSH 	R6'
-        	PUSH 	R7'
         	LI		R5,05E5BH  				;1/LN(10)
         	LI		R6,0D8A9H
         	LI		R7,0367FH
@@ -1701,13 +1696,6 @@ LNK:    WORD 01745H,0D174H,05D81H  ;K1
         WORD 06DB6H,0DB6DH,0B681H  ;K3
         WORD 02666H,06666H,06682H  ;K4
         WORD 00AAAH,0AAAAH,0AA83H  ;K5
-        WORD 05000H,00000H,00084H  ;K6
-
-LNK2:    WORD 01745H,0D174H,05D81H  ;K1
-        WORD 038E3H,08E38H,0E481H  ;K2
-        WORD 06DB6H,0DB6DH,0B781H  ;K3
-        WORD 02666H,06666H,06682H  ;K4
-        WORD 00AAAH,0AAAAH,0AB83H  ;K5
         WORD 05000H,00000H,00084H  ;K6
 ;
 ;Power Function.
@@ -1931,10 +1919,10 @@ EXX:		MOV		R5,R0
 ;
 ;DUPLICATE EQUIVALENT TO Z80 EX FOR EXCHANGING STATUS REGISTERS
 ;
-EXSR:		STST	R0			;SAVE CURRENT STATUS REGISTER
-			LST		ST			;LOAD PREVIOUS STATUS REGISTER
-			MOV		R0,ST		;SAVE CURRENT STATUS REGISTER IN SR
-			RET
+;EXSR:		STST	R0			;SAVE CURRENT STATUS REGISTER
+;			LST		ST			;LOAD PREVIOUS STATUS REGISTER
+;			MOV		R0,ST		;SAVE CURRENT STATUS REGISTER IN SR
+;			RET
 ;
 ;GET FLOATING POINT NUMBER FROM STACK INTO R5', R6' AND R7'
 ;
@@ -1966,7 +1954,7 @@ GETAC:		MOV		@FPA,R5
 			RET
 
 ;
-; Get AC and AC' from the stack (Note this is a function call from C so we preserve the stack)
+; Get AC and AC' from the stack (Note this is a function call from C so we must preserve the stack)
 ;
 GETCCARG:	LI		R0,4
 			A		SP,R0			;Jump over return addresses
@@ -2028,11 +2016,11 @@ POPAC:	 	MOV		*SP+,R0
 ;
 ; Complement carry flag - not used at present
 ;
-CCF:		STST	ST					;save flags
-			LI		R0,SCBIT
-			XOR		R0,ST
-			LST		ST
-			RET							;<-not RT as we are using BL
+;CCF:		STST	ST					;save flags
+;			LI		R0,SCBIT
+;			XOR		R0,ST
+;			LST		ST
+;			RET							;<-not RT as we are using BL
 			;
 ; Set  the Carry bit
 ;
