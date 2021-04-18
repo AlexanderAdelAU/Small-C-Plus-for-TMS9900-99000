@@ -4,11 +4,15 @@
  * Bug reports, bug fixes and comments should be addressed to:
  *
  *    R M Yorston
+ *
+ *    email Ron Yorston <rmy@pobox.com>
+ *
+ *    or
+ *
  *    1 Church Terrace
  *    Lower Field Road
  *    Reading
  *    RG1 6AS
- *
  *
  *  Usage smallcp [-flags modules];
  *	flags -C ctext; -M module includes main();  -D defmac; -U delmac; -E error stop
@@ -17,25 +21,16 @@
 /*
  *
  * The format of the compiler command line is:
-
  cc0 [options] file [file file...]
-
  Each option is a minus sign followed by a letter:
-
  -C	include the C source code as comments in the
  compiler-generated assembly code.
-
  -Dname[=value]
  define the symbolic value 'name'.
-
  -E	pause after an error is encountered.
-
  -M	none of the named files contains main().
-
  -T	enable walkback trace on calls to err().
-
  -Uname	undefine the macro 'name'.
-
  The -D options makes it possible to define symbolic values at
  compile time.  For example, you could define the symbol DEBUG to
  include debugging code in the compiled program, using the
@@ -44,7 +39,6 @@
  because CP/M translates the command line into upper case it is
  only possible to define upper case symbols and values.  The
  symbols CPM, Z80, PCW and SMALL_C are predefined.
-
  The -M option stops the compiler from producing its standard
  header (initializing the stack pointer, for example), which is
  only required in the first object module to be linked.  The
@@ -52,24 +46,20 @@
  automatically starts programs at 100H.  As a result, forgetting
  the -M option will lengthen your program by a few bytes but
  cause no other harm.
-
  The -T option compiles code into each function which will allow
  a "walkback trace" to be printed when err() is called.  The
  walkback trace lists all the functions that have been called but
  which have not yet returned (recursive calls lead to multiple
  listings).
-
  The -U option removes a macro definition from the macro table.
  It can be used to undefine the predefined symbols CPM, Z80, PCW
  and SMALL_C.
-
  Options and files are separated by spaces, and options must
  precede file names.  Only file names (optionally preceded by a
  disk name) should be given:  the compiler automatically adds the
  extension ".C".  The output file is given the same name (and is
  put onto the same disk) as the first input file, but with the
  extension ".ASM".
-
  *
  */
 #include "stdio.h"
@@ -1249,4 +1239,3 @@ getarg(typ, otag)
 	}
 	ns();
 }
-
