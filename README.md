@@ -38,7 +38,7 @@ using Simpson's Rule, is shown below.  This is a very good test of the Floating 
 #include "float.h"
 double fxy[100], fy[12];
 double pi;
-double f(); double g();
+double f();
 
 main() {
 
@@ -135,9 +135,6 @@ double zd;
 	return (fabs(zd));
 }
 
- g(x,y) double x,y; {
-	return (x*y*y);
-}
 
 
 ```
