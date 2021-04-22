@@ -9,7 +9,7 @@ should be able to self compile with the appropriate OS support on the target com
 may help building and testing the compiler in your own environment.
 
 An IOLIB is included that supports CP/M compatible operating system calls and a core set of 40bit floating point library routines.  The core set
-includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP.   Other functions such as trancedentals will be added later.  The TMS9900 Floating Point Library filename is CFLOAT48.A99 and
+includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP, SQRT.   Other functions such as trancedentals will be added later.  The TMS9900 Floating Point Library filename is CFLOAT48.A99 and
 was ported from a Z80 Floating Point library.
 
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
