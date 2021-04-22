@@ -21,7 +21,7 @@
 ;		extern double floor();
 ;		extern double float();
 ;		extern ifix();
-;		extern cos(x), sin(x), tan(x), ln(x), pow(x,y),exp(x)
+;		extern cos(x), sin(x), tan(x), ln(x), pow(x,y),exp(x),sqrt(x)
 
 ;
 ;	Floating number format.
@@ -1087,44 +1087,40 @@ MOD1:		RET
 ;the iteration method. A guess is calculated from
 ;the foregoing follows the formula:
 ; I (n + 1) = (X / I (n) + I (n)) / 2.
-; Some first goes halves X's exponent.
+; Some first iteration halves X's exponent.
 ;Continue until ABS (I (n + 1) -I (n)) is
 ;less than half the exponent of X minus 20
 
-_ccsqrt::	CALL	@GETCCARG				;Get X into AC
+_ccsqrt::	CALL	@GETCCARG			;Get X into AC
 ;
-SQR:    	MOVB	@2*R7+1(WP),R4			; Is AC null?
+SQR:    	MOVB	@2*R7+1(WP),R4		; Is AC null?
         	JEQ		MOD1				;Yes => Return
 
         	TMB		R5,0				;Is AC negative?
-        	JNE		MOD1				;Yes => Return
+        	JEQ		MOD1				;Yes => Return
 
-        	CALL	@EXX             	;Save AC'
-			CALL	@PUSHAC
-        	CALL	@EXX
-       		CALL 	@EQUAL      		;AC'= AC
+       		CALL 	@EQUAL      		;AC'= AC = X
         	AI		R4,EXPN*256     	;First iteration, e.g. 0x82 -> 0x02
         	SRA  	R4					;Halve the exponent -> 0x01
         	AI		R4,EXPN*256			;Comparative value -> 0x81
          	AI		R4,-256*20         	; is the half exponent
-        	PUSH 	R4         			;Save s. value for routine below
-        	CALL	@EXX
+        	PUSH 	R4         			;Save accuracy test
 
-SQR1:   	CALL	@PUSHAC         			;Save the number
+SQR1:   	CALL	@PUSHAC         	;Save the number X
         	CALL 	@FPDIV      		;Divide by and add
-        	CALL 	@FPADD      		;previous go
+        	CALL 	@FPADD      		;previous Interation X is first guess
         	DEC  	R7         			;Half value (LSB of R7 is exponent)
-        	CALL	@PUSHAC         			;Save this go
-        	CALL 	@FPSUB      		;Calculate the difference between
-        	MOVB	@2*R7+1(WP),R4      ;the two
-        	CALL	@POPAC         		;Get the new goal
-        	CALL	@EXX
-        	CALL	@POPAC         		;Get the number
-        	CB		*SP,R4				;Continue until done.
-        	JLT		SQR1				;;is small enough
+        	CALL	@PUSHAC         	;Save new Iteration I(n+1)
+        	CALL 	@FPSUB      		;Calculate the difference between Iterations I(n+1) - I(n)
+        	MOVB	@2*R7+1(WP),R4      ;the two and place new exponent in msb R4
+        	CALL	@POPAC'        		;Get AC' = I(n+1)
+        	CALL	@POPAC         		;Get AC = X
+        	CB		R4,*SP				;SP points to target accuracy on the stack
+        	JHE		SQR1				;
         	MOV		*SP+,R0         	;Remove s. value
-        	CALL	@EXX
-        	CLR		R4          		;Reset carry
+        	CALL	@EXX				;AC = I(n+a)
+        	CLR		R0          		;Reset carry
+        	INC		R0
 SQR2:   	B		@ADD_PAC      		;Get AC'
 
 ;TANGENS.
@@ -1134,7 +1130,7 @@ SQR2:   	B		@ADD_PAC      		;Get AC'
 
 _cctan::	CALL	@GETCCARG			;Get X from the stack into AC
 TAN:    	CALL 	@EQUAL
-			CALL	@PUSHAC'				;Save X
+			CALL	@PUSHAC'			;Save X
         	CALL 	@COS
         	CALL	@POPAC'				;Get X
         	CALL	@EXX				;AC' = COS(X)
