@@ -128,88 +128,88 @@
 ;					  L>0: Exponent+128 (80H).;
 ;
 
-R0			EQU 	0		;Free use
-R1			EQU 	1		; Can be used but in some operations they are AC' prime registers
-R2			EQU 	2		; Can be used but in some operations they are AC' prime registers
-R3			EQU 	3		; Can be used but in some operations they are AC' prime registers
-R4			EQU 	4		;Free use
-R5			EQU 	5
-R6			EQU 	6
-R7			EQU 	7
-R8			EQU 	8		;Free use
-R5'			EQU		R1		;Prime register
-R6'			EQU		R2		;Prime register
-R7'			EQU		R3		;Prime register
-WP2			EQU		9		;Secondary Workspace Register when two arguments are required, e.g. FPMUL etc
-WP			EQU 	13		;WORKSPACE REGISTER
-ST			EQU		15		;STATUS REGISTER
-SP			EQU 	10		;STACK POINTER
-R11			EQU 	11
+R0	EQU 	0		;Free use
+R1	EQU 	1		; mapped to AC' prime registers
+R2	EQU 	2		; mapped to AC' prime registers
+R3	EQU 	3		; mapped to AC' prime registers
+R4	EQU 	4		;Free use
+R5	EQU 	5		;AC Register
+R6	EQU 	6		;AC Register
+R7	EQU 	7		;AC Register
+R8	EQU 	8		;Free use
+R5'	EQU	R1		;Prime register
+R6'	EQU	R2		;Prime register
+R7'	EQU	R3		;Prime register
+WP2	EQU	9		;Secondary Workspace Register when two arguments are required, e.g. FPMUL etc
+WP	EQU 	13		;WORKSPACE REGISTER
+ST	EQU	15		;STATUS REGISTER
+SP	EQU 	10		;STACK POINTER
+R11	EQU 	11
 
-			DXOP 	CALL,6
-			DXOP 	RET,7
-			DXOP 	PUSH,8
-			DXOP 	POP,9
-			DXOP	WHEX,10
-			DXOP	WRITE,12	;WRITE CHAR IN MSB
-			DXOP	MESG,14		;OUTPUT NULL TERMINATED MESSAGE
+	DXOP 	CALL,6
+	DXOP 	RET,7
+	DXOP 	PUSH,8
+	DXOP 	POP,9
+	DXOP	WHEX,10
+	DXOP	WRITE,12		;WRITE CHAR IN MSB
+	DXOP	MESG,14		;OUTPUT NULL TERMINATED MESSAGE
+	DXOP	DEBUG,15
 
-SIGN:   	EQU  	80H
-CLR_SIGN:   EQU  	7FFFH
-MSB:   		EQU  	80H
-LSB:   		EQU  	01H
-EXPN:   	EQU  	80H
-;MSB_EXPN:  	EQU  	8000H
-CLR_EXPN:  	EQU  	7FH
-SCBIT:		EQU		1000H		;Set the carry bit
-CCBIT:		EQU		0EFFFH		;Clear the carry bit
-AGT:		EQU		4000H
-LGT:		EQU		8000H
-OVFLO:		EQU		0800H
+SIGN:   	EQU	80H
+CLR_SIGN:	EQU	7FFFH
+MSB:   	EQU	80H
+LSB:   	EQU	01H
+EXPN:   	EQU	80H
+;MSB_EXPN:  	EQU	8000H
+CLR_EXPN:	EQU	7FH
+SCBIT:	EQU	1000H		;Set the carry bit
+CCBIT:	EQU	0EFFFH		;Clear the carry bit
+AGT:	EQU	4000H
+LGT:	EQU	8000H
+OVFLO:	EQU	0800H
 
-IWIDTH: 	EQU  	0F0H
-FWIDTH: 	EQU  	0FH
+IWIDTH: 	EQU	0F0H
+FWIDTH: 	EQU	0FH
 
 ;
 ; This storage is used to store the stack variables etc that small-C calls
 ; to load and store the packed floating point numbers.
 ; Actual manipulation and arithmatic is done using R5,R6, and R7 agains R5', R6' and R7'
 ;
-			EVEN
-FLAGS:		WORD	0
-CRLF:		BYTE	0DH,0
-			EVEN
-FPA:		BSS		2		;R5
-			BSS		2		;R6
-			BSS		2		;R7
+	EVEN
+FLAGS:	WORD	0
+CRLF:	BYTE	0DH,0
+	EVEN
+FPA:	BSS	2		;R5
+	BSS	2		;R6
+	BSS	2		;R7
 
-			EVEN
+	EVEN
 DIVZERO: 	CALL	@GRIPE
-			TEXT	"can't"
-			BYTE	0
-			EVEN
-ILLFCT:		CALL	@GRIPE
-			TEXT	"Illegal function"
-			BYTE	0
-			EVEN
-OFLOW:		CALL	@GRIPE
-			TEXT	"Arithmetic overflow"
-			BYTE	0
-			EVEN
-GRIPE:		;CALL	@QERR			;top word on stack points to message
-			B		@0F000H  		;SHELL this a temporary hack - how do we handle fatal error ?
-			EVEN
+	TEXT	"can't"
+	BYTE	0
+	EVEN
+ILLFCT:	CALL	@GRIPE
+	TEXT	"Illegal function"
+	BYTE	0
+	EVEN
+OFLOW:	CALL	@GRIPE
+	TEXT	"Arithmetic overflow"
+	BYTE	0
+	EVEN
+GRIPE:	;CALL	@QERR			;top word on stack points to message
+	EVEN
 
 ;
-; Note: function calls into the FP library are handled differently from Small C cmpiler library calls.
-;       The stack in function Calls are handled by the Small C compiler, whereas for libary calls the stack
-;       must be maintained by cfloatM48.A99.
+;	Note: function calls into the FP library are handled differently from Small C cmpiler library calls.
+;	The stack in function Calls are handled by the Small C compiler, whereas for libary calls the stack
+;	must be maintained by cfloatM48.A99.
 ;
-;       Function call are conveniently declared in the file fpcall.c to make this more apparent.  To help with
-;       the distincion, the libary functions where this is applicable are prefixed with _ccfloat for example.
-
-;		Library calls from small-C are prefixed with underline character e.g. _ifix
-;		Function calls  are prefixed with underline character  followed by cc e.g. _ccifix
+;	Function call are conveniently declared in the file fpcall.c to make this more apparent.  To help with
+;	the distincion, the libary functions where this is applicable are prefixed with _ccfloat for example.
+;
+;	Library calls from small-C are prefixed with underline character e.g. _ifix
+;	Function calls  are prefixed with underline character  followed by cc e.g. _ccifix
 ;
 ;
 ;	exchange floating point accumulator with
@@ -219,99 +219,93 @@ _fpswap::
 ;
 ; Get stack into AC'
 ;
-			MOV		@2(SP),R5'		;Move the FPN on the stack into AC'
-			MOV		@4(SP),R6'
-			MOV		@6(SP),R7'
-			CALL	@GETAC			;Copy FPA into AC
+	MOV	@2(SP),R5'		;Move the FPN on the stack into AC'
+	MOV	@4(SP),R6'
+	MOV	@6(SP),R7'
+	CALL	@GETAC		;Copy FPA into AC
 ;
 ; Copy FPA to stack
 ;
-			MOV		R5,@2(SP)  		;Push R5
-			MOV 	R6,@4(SP)		;Push R6
-			MOV 	R7,@6(SP)		;Push R7
+	MOV	R5,@2(SP)  		;Push R5
+	MOV 	R6,@4(SP)		;Push R6
+	MOV 	R7,@6(SP)		;Push R7
 
-			CALL	@EXX			;Copy AC' into AC
-			B		@PUTAC			;Finally place stack into FP Accumulator
-;			RET
+	CALL	@EXX		;Copy AC' into AC
+	B	@PUTAC		;Finally place stack into FP Accumulator
 
 
 ;
 ; LOAD FPN AT ADDRESS IN R4 INTO ACCUMULATOR
 ;
-;	R4->	| 	R5 	| 				FPA   	R5
-;	R4+2	|	R6	|				FPA+2	R6
-;	R4+4	|	R7	|				FPA+4	R7
+;	R4->| 	R5 	|FPA   	R5
+;	R4+2|	R6	|FPA+2	R6
+;	R4+4|	R7	|FPA+4	R7
 ;
-_fload::	LI		R0,FPA			;Begin at register R5
-			LI		R8,6			;3 words
-FLD1:		MOVB 	*R4+,*R0+		;Move byte at a time
-			DEC		R8
-			JNE		FLD1
-			RET
+_fload::	LI	R0,FPA		;Begin at register R5
+	LI	R8,6		;3 words
+FLD1:	MOVB 	*R4+,*R0+		;Move byte at a time
+	DEC	R8
+	JNE	FLD1
+	RET
 
 ;
 ;
 ;	SP->	|RETURN	|
-;	R4->	| 	R5 	| 		        FPA   	R5
-;	R4+2	|	R6	|				FPA+2	R6
-;	R4+4	|	R7	|				FPA+4	R7
+;	R4->	|R5 	|FPA   	R5
+;	R4+2	|R6	|FPA+2	R6
+;	R4+4	|R7	|FPA+4	R7
 ;
 ;	STORE FROM FPA TO THE ADDRESS IN R4
 ;
-_fstore::	LI		R0,FPA			;Begin at Register 5
-			LI		R8,6
-FST1:		MOVB	*R0+,*R4+
-			DEC		R8
-			JNE		FST1
-			RET
+_fstore::	LI	R0,FPA			;Begin at Register 5
+	LI	R8,6
+FST1:	MOVB	*R0+,*R4+
+	DEC	R8
+	JNE	FST1
+	RET
 
 ;
 ;	load FPA from (R4) and push FA (fall through to _fpush
 ;
-_fldpsh::	LI		R0,FPA
-			MOV		*R4+,*R0+	;R5
-			MOV		*R4+,*R0+	;R6
-			MOV		*R4,*R0		;R7
+_fldpsh::	LI	R0,FPA
+	MOV	*R4+,*R0+		;R5
+	MOV	*R4+,*R0+		;R6
+	MOV	*R4,*R0		;R7
 ;
-;		Push the floating point accumulator
-;		(preserving return address)
+;	Push the floating point accumulator
+;	(preserving return address)
 ;
-;									SP->	|RETURN	|
-;									SP+2	| 	R5 	|
-;									SP+4	|	R6	|
-;	SP->	|RETURN |		=>		SP+6	|	R7	|
+;	SP->	|	RETURN	|
+;	SP+2	| 	R5 	|
+;	SP+4	|	R6	|
+;	SP+6	|	R7	|
 ;
 ;
-_fpush::
-			MOV		*SP,R0
-			MOV		@FPA,@-4(SP)  	;Push R5
-			MOV 	@FPA+2,@-2(SP)	;Push R6
-			MOV 	@FPA+4,*SP		;Push R7
-			AI		SP,-4			;Adjust SP
-			B 		*R0				;return to calling programme
+_fpush::	MOV	*SP,R0
+	MOV	@FPA,@-4(SP)	;Push R5
+	MOV	@FPA+2,@-2(SP)	;Push R6
+	MOV	@FPA+4,*SP		;Push R7
+	AI	SP,-4		;Adjust SP
+	B	*R0		;return to calling programme
 ;
 ;	push floating point accumulator
 ;	(preserve return address and next stacked word)
-;									SP->	|RETURN |
-;									SP+2	| WORD	|
-;									SP+4	| 	R5 	|
-;	SP->	|RETURN |				SP+6	|	R6	|
-;	SP+2	| WORD  |		=>		SP+8	|	R7	|
+;	SP->	|RETURN |
+;	SP+2	| WORD	|
+;				SP+4	|R5 	|
+;	SP->	|RETURN |		SP+6	|R6	|
+;	SP+2	| WORD  |	=>	SP+8	|R7	|
 ;
 ;
-_fpush2:: 	MOV		*SP,@-6(SP)			;New location for return address at top of stack
-			MOV		@2(SP),@-4(SP)		;Save next word
-			MOV		@FPA,@-2(SP)	  	;Push R5
-			MOV 	@FPA+2,*SP			;Push R6
-			MOV 	@FPA+4,@+2(SP)		;Push R7
-			AI		SP,-6				;SP NOW POINTS TO RETURN 2nd ADDRESS
-			RET
+_fpush2:: 	MOV	*SP,@-6(SP)		;New location for return address at top of stack
+	MOV	@2(SP),@-4(SP)	;Save next word
+	MOV	@FPA,@-2(SP)	;Push R5
+	MOV 	@FPA+2,*SP		;Push R6
+	MOV 	@FPA+4,@+2(SP)	;Push R7
+	AI	SP,-6		;SP NOW POINTS TO RETURN 2nd ADDRESS
+	RET
 
 ;
-;			Floating Point Routine Interfaces
-;
-
-
 ;
 ;FLOATING POINT ADDITION.
 ;
@@ -320,16 +314,6 @@ _fpush2:: 	MOV		*SP,@-6(SP)			;New location for return address at top of stack
 ; AC will be R5, R6 and R7
 ; AC' is equivalent to R5',R6' and R7'
 ;
-; Left Sign | 	Right Sign | Left Mant > Right Man| Compute As |  Result Is
-;
-;	    -			+			Yes					LM - RM			-
-;		+			-			Yes					LM - RM			+
-;		-			+			No					RM - LM			+
-;		+			-			No					RM - LM			-
-;
-;
-; ;    Addition
-;     --------
 ;
 ;     NAME:      FPADD
 ;     FUNCTION:  AC=AC+AC'. The number in AC' is added to the
@@ -338,134 +322,132 @@ _fpush2:: 	MOV		*SP,@-6(SP)			;New location for return address at top of stack
 ;
 ;	Library Call from Small C
 ;
-;			SP->	|RETURN	|
-;			SP+2	| 	R5 	|
-;			SP+4	|	R6	|
-;			SP+6	|	R7	|		=>		SP->	|RETURN |
+;	SP->	|RETURN	|
+;	SP+2	|R5 	|
+;	SP+4	|R6	|
+;	SP+6	|R7	|	=>	SP->	|RETURN |
 ;
 _fpadd::
 ;
 ; Now get the FPA into AC, and Stack FP into AC'
 ;
 
-			CALL	@GETAC'				;Get AC' from Stack
-			CALL	@GETAC				;Get AC from FPA
-			CALL	@EXX				;Swap them so we have AC + AC'
+	CALL	@GETAC'			;Get AC' from Stack
+	CALL	@GETAC			;Get AC from FPA
+	CALL	@EXX			;Swap them so we have AC + AC'
 
-FPADD:		TMB		R5',0			;Is AC' Negative?
-			JNE		ADD1
-			B		@SUB1			;Yes => SUB1
+FPADD:	TMB	R5',0			;Is AC' Negative?
+	JNE	ADD1
+	B	@SUB1			;Yes => SUB1
 
-ADD1:   	MOVB	@2*R7'+1(WP),R0	;Is AC' zero?
-			JEQ		ADD_PAC
+ADD1:	MOVB	@2*R7'+1(WP),R0		;Is AC' zero?
+	JEQ	ADD_PAC
 ;
 ; At this point we have AC and AC' populated and we know
 ; that AC' is both non zero and positive
 ;
-	    	CALL	@PUSHAC'		;Need to preserve AC'
-	    	MOVB	@2*R7+1(WP),R0	;Is AC zero?
-        	JNE		ADD2    		;No => ADD2
-	     	CALL	@EXX			;Return AC'
-        	ANDI	R5, CLR_SIGN	;Make AC' Positive
-          	JMP   	ADD10
+	CALL	@PUSHAC'			;Need to preserve AC'
+	MOVB	@2*R7+1(WP),R0		;Is AC zero?
+	JNE	ADD2			;No => ADD2
+	CALL	@EXX			;Return AC'
+	ANDI	R5, CLR_SIGN		;Make AC' Positive
+	JMP	ADD10
 ;
 ; Work on AC as it could be positive or negative
 ;
-ADD2:   	PUSH	R5				;Save AC sign for next operation
-			LI		R8,SIGN*256
-         	SOCB	R8,R5			;Set AC MSB as Negative
-         	SOCB	R8,R5'			;Set AC' MSB as Negative
-         	CLR		R8				;Need to clear LSB for for ADD3
-         	MOVB	@2*R7+1(WP),R0	;EXP
-         	MOVB	@2*R7'+1(WP),R8	;EXP'
-          	SB		R0,R8	        ;R8 => EXP'- EXP (MSB)
-          	JEQ		ADD4			;EXP = EXP' => ADD4
-        	JGT		ADD3    		;EXP < EXP' => ADD3 (if result is positive EXP' > EXP)
+ADD2:	PUSH	R5			;Save AC sign for next operation
+	LI	R8,SIGN*256
+	SOCB	R8,R5			;Set AC MSB as Negative
+	SOCB	R8,R5'			;Set AC' MSB as Negative
+	CLR	R8			;Need to clear LSB for for ADD3
+	MOVB	@2*R7+1(WP),R0		;EXP
+	MOVB	@2*R7'+1(WP),R8		;EXP'
+	SB	R0,R8			;R8 => EXP'- EXP (MSB)
+	JEQ	ADD4			;EXP = EXP' => ADD4
+	JGT	ADD3    			;EXP < EXP' => ADD3 (if result is positive EXP' > EXP)
 ;
 ;	Negative difference so we have to make positive
-;   R8 behaves as an AF AF' pair MSB is AF and LSB is AF'
+;   	R8 behaves as an AF AF' pair MSB is AF and LSB is AF'
 ;
-        	INV		R8         		;Make R8 MSB positive (lower bytes is used as flag)
-        	AI		R8,256			;Two's complement of MS byte
-        	CALL	@EXX			;We have to adjust AC'
+	INV	R8			;Make R8 MSB positive (lower bytes is used as flag)
+	AI	R8,256			;Two's complement of MS byte
+	CALL	@EXX			;We have to adjust AC'
 ;
 ;	R8 HOLDS THE DIFFERENCE OR ADJUSTMENT NEEDED
-;   IF EXP < EXP' ADJUST EXP UP
-;   IF EXP > EXP' ADJUST EXP' UP
+;	IF EXP < EXP' ADJUST EXP UP
+;	IF EXP > EXP' ADJUST EXP' UP
 ;
 
-ADD3:		CALL 	@SRIGHT     	;Shift AC to the right by 1 position
-			INC		R7				;Increment exponent and check if  EXP=EXP'?
-        	AI  	R8,-256    		;Decrement the difference
-        	MOVB	R8,R0
-          	JNE	 	ADD3    		;No => ADD3
-          	MOV		R8,R0			;Was it AC'. note MSB of R8 is zero from ADD3 loop
-          	JEQ		ADD4			;No => ADD4
-          	CALL	@EXX			;Yes=>Exchange for for AC
+ADD3:	CALL 	@SRIGHT			;Shift AC to the right by 1 position
+	INC	R7			;Increment exponent and check if  EXP=EXP'?
+	AI	R8,-256			;Decrement the difference
+	MOVB	R8,R0
+	JNE	ADD3			;No => ADD3
+	MOV	R8,R0			;Was it AC'. note MSB of R8 is zero from ADD3 loop
+	JEQ	ADD4			;No => ADD4
+	CALL	@EXX			;Yes=>Exchange for for AC
 ;
 ; First check if the incoming AC was negative so we can reapply sign then add mantissas
 ;
-ADD4:   	MOV		*SP+,R0			;Get the AC sign
-			TMB		R0,0			;Negative
- 			JEQ		ADD5	   		;Yes => ADD5
+ADD4:	MOV	*SP+,R0			;Get the AC sign
+	TMB	R0,0			;Negative
+ 	JEQ	ADD5	   		;Yes => ADD5
 
-        	CALL 	@ADDAC      	;MANT=MANT+MANT'
-        	JNC		ADD9A    		;No carry/overflow then => ADD9
+	CALL 	@ADDAC			;MANT=MANT+MANT'
+	JNC	ADD9A			;No carry/overflow then => ADD9
 ;
 ; There has been a carry/overflow so we need to rotate the mantissa to the right 1 place,
 ; Flag is set from previous instruction, i.e. Carry is set
 ;
-			CALL 	@RIGHT      	;Rotate to the right and shift in the carry out from ADDAC
-			MOVB	@2*R7+1(WP),R0
-			AI		R0,256			;Increment exponent
-			MOVB	R0,@2*R7+1(WP)
- 	        JNE		ADD9A			;Sign is positive
-	        JMP		ADD10			;Overflow
+	CALL 	@RIGHT			;Rotate to the right and shift in the carry out from ADDAC
+	MOVB	@2*R7+1(WP),R0
+	AI	R0,256			;Increment exponent
+	MOVB	R0,@2*R7+1(WP)
+ 	JNE	ADD9A			;Sign is positive
+	JMP	ADD10			;Overflow
 
 ;For CMPAC
 ; 	AC=AC' => JEQ.
-;   AC>AC' => JH.  (carry cleared  in Z80 land)
-;   AC<AC' => JL   (carry set in Z80 land)
+;	AC>AC' => JH.  (carry cleared  in Z80 land)
+;	AC<AC' => JL   (carry set in Z80 land)
 ;
-
-
-ADD5:		CALL 	@CMPAC      	;Compare AC to AC'
-			STST	ST				;Save for sign in ADD9
-			PUSH	ST				;Save on stack
-        	JEQ		ADDZ     		;AC=AC' => ADDZ
+ADD5:	CALL 	@CMPAC			;Compare AC to AC'
+	STST	ST			;Save for sign in ADD9
+	PUSH	ST			;Save on stack
+	JEQ	ADDZ			;AC=AC' => ADDZ
 ;
 ; We need to fix the sign here.
 ;
-			JH		ADD6     		;AC>AC' => ADD6
-			CALL	@EXX			;AC<AC' => Swap
+	JH	ADD6			;AC>AC' => ADD6
+	CALL	@EXX			;AC<AC' => Swap
 
-ADD6:   	CALL 	@SUBAC      	;MANT=MANT-MANT'
+ADD6:	CALL	@SUBAC			;MANT=MANT-MANT'
 
-ADD7:   	TMB		R5,0			;Test the sign bit - is it normalised
-			JEQ		ADD8			;Yes => ADD8
-        	CALL 	@SLEFT      	;Shift left one bit
-        	MOVB	@2*R7+1(WP),R0	;Check for zero
-        	AI		R0,-256			;Subtract 1 from exponent
-         	MOVB	R0,@2*R7+1(WP)	;Update it
-         	JEQ		ADDZ     		;No  => AC zero
-        	JMP		ADD7
+ADD7:	TMB	R5,0			;Test the sign bit - is it normalised
+	JEQ	ADD8			;Yes => ADD8
+	CALL	@SLEFT			;Shift left one bit
+	MOVB	@2*R7+1(WP),R0		;Check for zero
+	AI	R0,-256			;Subtract 1 from exponent
+	MOVB	R0,@2*R7+1(WP)		;Update it
+	JEQ	ADDZ			;No  => AC zero
+	JMP	ADD7
 
-ADDZ:   	CALL 	@ZERO
+ADDZ:	CALL	@ZERO
 
-ADD8:   	POP		ST         		;Get sign from ADD5 Compare
-			LST		ST
+ADD8:	POP	ST			;Get sign from ADD5 Compare
+	LST	ST
 
-ADD9:		JH		ADD10			;Carry negative from ADD5 above
+ADD9:	JH	ADD10			;Carry negative from ADD5 above
 
-ADD9A:		ANDI	R5,CLR_SIGN		;Clear sign bit
+ADD9A:	ANDI	R5,CLR_SIGN			;Clear sign bit
 ;
 ;  Common routine that preserves AC'
 ;
 
-ADD10:  	CALL	@POPAC'				;Recover AC' which is used by other routines
+ADD10:	CALL	@POPAC'			;Recover AC' which is used by other routines
 
 ADD_PAC:	CALL	@PUTAC			;Put AC into the FPA
-        	RET
+	RET
 
 ;
 ;
@@ -477,43 +459,41 @@ ADD_PAC:	CALL	@PUTAC			;Put AC into the FPA
 ;     Subtraction
 ;     ------------
 ;
-;     NAME:      FPSUB
-;     FUNCTION:  AC=AC-AC'. The number in AC' is subtracted from
-;                the number in AC and the result is placed in AC.
+; 	NAME:	FPSUB
+;	FUNCTION:	AC=AC-AC'. The number in AC' is subtracted from
+;		the number in AC and the result is placed in AC.
 ;
 ;
-;			SP->	|RETURN	|
-;			SP+2	| 	R5 	|
-;			SP+4	|	R6	|
-;			SP+6	|	R7	|		=>		SP->	|RETURN |
+;	SP->	|RETURN	|
+;	SP+2	| R5 	|
+;	SP+4	|R6	|
+;	SP+6	|R7	|=>	SP->	|RETURN |
 ;
-_fpsub::
 ;
 ;	subtract the floating point accumulator from the value
 ;	on the stack (under the return address), leave result
 ;	in the floating point accumulator.
 ;
+_fpsub::	CALL	@GETAC'			;Get AC' from Stack
+	CALL	@GETAC			;Get AC from FPA
+	CALL	@EXX			;;Swap them so we have AC - AC'  (Stack - FPA)
 
-			CALL	@GETAC'				;Get AC' from Stack
-			CALL	@GETAC				;Get AC from FPA
-			CALL	@EXX				;;Swap them so we have AC - AC'  (Stack - FPA)
+FPSUB:	TMB	R5',0			;Is AC' negative?
+	JNE	SUB1			;No => SUB1
+	B	@ADD1			;Yes => ADD1 that is AC + (-AC')
 
-FPSUB:		TMB		R5',0				;Is AC' negative?
-			JNE		SUB1				;No => SUB1
-			B		@ADD1				;Yes => ADD1 that is AC + (-AC')
-
-SUB1:   	CALL 	@FPNEG      		;AC => -AC so we have -AC + AC' and fix up sign in ADD1 and FPNEG
-        	CALL 	@ADD1       		;Add AC' to  -AC
+SUB1:	CALL	@FPNEG      		;AC => -AC so we have -AC + AC' and fix up sign in ADD1 and FPNEG
+	CALL	@ADD1       		;Add AC' to  -AC
 
 ;
 ; Complement the sign bit
 ;
-FPNEG:  	MOVB	@2*R7+1(WP),R0   	;Is AC zero?
-        	JEQ		FP_RET      	 	;Yes => Return
-        	LI		R0,SIGN*256
-       	 	XOR  	R0,R5				;Complement sign
-       	 	MOV		R5,@FPA
-FP_RET:		RET
+FPNEG:	MOVB	@2*R7+1(WP),R0		;Is AC zero?
+	JEQ	FP_RET			;Yes => Return
+	LI	R0,SIGN*256
+	XOR	R0,R5			;Complement sign
+	MOV	R5,@FPA
+FP_RET:	RET
 
 
 ;FLOATING POINT DIVISION.
@@ -528,7 +508,7 @@ FP_RET:		RET
 ;                R4=1: Overflow or AC' equal to 0.
 ;
 ;
-;	divide the value on the stack (under the return
+;	Divide the value on the stack (under the return
 ;	address) by the floating point accumulator, leave
 ;	result in the floating point accumulator.
 ;
@@ -539,130 +519,130 @@ FP_RET:		RET
 ;  DIVISOR  = 2^-2+2^-3+2^-4 etc
 
 ;
-;			SP->	|RETURN	|
-;			SP+2	| 	R5 	|
-;			SP+4	|	R6	|
-;			SP+6	|	R7	|		=>		SP->	|RETURN |
+;	SP->	|RETURN	|
+;	SP+2	|R5 	|
+;	SP+4	|R6	|
+;	SP+6	|R7	|	=>SP->	|RETURN |
 ;
 ;	WP2 is on stack is declared to hold the result and other temporary variables
 ;  	WP2 = SP - 32
 ;
-;	WP2 -> R1 holds Saved R5'
+;	WP2 	-> R1 holds Saved R5'
 ;		-> R2 holds Number of bits per byte
 ;		-> R3 holds Number of bytes in mantissa
 ;		-> R4 holds resultant sign
 ;
 _fpdiv::	CALL	@GETAC'				;Get AC' off the stack
-			CALL	@GETAC				;Get AC from FPA now are now ready for AC/AC'
-			CALL	@EXX
+	CALL	@GETAC				;Get AC from FPA now are now ready for AC/AC'
+	CALL	@EXX
 
-FPDIV: 		MOVB	@2*R7'+1(WP),R0		;Is AC' EXPN zero
-        	JNE		DIVI_A
-        	CALL	@SCF
-        	RET					       	;Yes => Overflow
+FPDIV:	MOVB	@2*R7'+1(WP),R0			;Is AC' EXPN zero
+	JNE	DIVI_A
+	CALL	@SCF
+	RET					;Yes => Overflow
 
-DIVI_A:		MOVB	@2*R7+1(WP),R4		; Is AC EXPN zero?
-        	JNE		DIVI_B
-        	B		@MULT5B				;Yes, => Return
+DIVI_A:	MOVB	@2*R7+1(WP),R4			; Is AC EXPN zero?
+	JNE	DIVI_B
+	B	@MULT5B				;Yes, => Return
 
-DIVI_B:		SB		R0,R4      			;Adjust exponent by calling EXPSGN with R4
-			STST	ST					;Set flags for call to EXPSGN
-        	MOV		SP,WP2				;WP2 will be used as Workspace Pointer on the stack
-        	AI		WP2,-32				;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
-										;Higher registers are not used as they will be overwritten during calls
-										;to SRIGHT, SLEFT etc which use registers WP2->R13 and WP2->R14
-			LI		R0,5				;Note, the code supports 5 bytes (40bit)
-			MOV		R0,@2*R3(WP2)		;WP2->R3 holds the number of bytes in mantissa
-			MOV		WP2,R8				;Get Stack Workspace Pointer
-			AI		R8,2*R5				;R8 -> first byte of the result on the stack, i.e. WP2->R5
+DIVI_B:	SB	R0,R4			;Adjust exponent by calling EXPSGN with R4
+	STST	ST			;Set flags for call to EXPSGN
+	MOV	SP,WP2			;WP2 will be used as Workspace Pointer on the stack
+	AI	WP2,-32			;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
+					;Higher registers are not used as they will be overwritten during calls
+					;to SRIGHT, SLEFT etc which use registers WP2->R13 and WP2->R14
+	LI	R0,5			;Note, the code supports 5 bytes (40bit)
+	MOV	R0,@2*R3(WP2)		;WP2->R3 holds the number of bytes in mantissa
+	MOV	WP2,R8			;Get Stack Workspace Pointer
+	AI	R8,2*R5			;R8 -> first byte of the result on the stack, i.e. WP2->R5
 
-			CLR		R0					;Result offset byte.  Points to first byte initially
-			MOV		R0,@2*R5(WP2)		;Clear the result
-			MOV		R0,@2*R6(WP2)		;Clear the result
-			MOV		R0,@2*R7(WP2)		;Clear the result
+	CLR	R0				;Result offset byte.  Points to first byte initially
+	MOV	R0,@2*R5(WP2)		;Clear the result
+	MOV	R0,@2*R6(WP2)		;Clear the result
+	MOV	R0,@2*R7(WP2)		;Clear the result
 ;
 ;  CALL EXPSGN to
-;  1.Exclusive OR Signs to get Resultant Sign
-;  2.Subtract Divisor Exponenet from Dividend Exponent
+;  	1.Exclusive OR Signs to get Resultant Sign
+;  	2.Subtract Divisor Exponenet from Dividend Exponent
 ;  Place both these results onto the result space allocated on the stack
 ;  The resultant sign is placed in R4(WP2)
 ;
-			MOV		R5',@2*R1(WP2)		;preserve AC' sign and msb as it is modified in EXPSGN
-			CALL 	@EXPSGN     		;calculate sign and (EXP-EXP') and place in R7 (WP2)
-DIVI_C:		LI		R0,8				;Number of bits per bytes
-			MOV		R0,@2*R2(WP2)		;WP2->R2 holds the number of bits
+	MOV	R5',@2*R1(WP2)		;preserve AC' sign and msb as it is modified in EXPSGN
+	CALL	@EXPSGN     		;calculate sign and (EXP-EXP') and place in R7 (WP2)
+DIVI_C:	LI	R0,8			;Number of bits per bytes
+	MOV	R0,@2*R2(WP2)		;WP2->R2 holds the number of bits
 
 ;
 ; CMPAC  compares AC to AC'
 ; CMPAC2 compares AC' to AC
 ;
-DIVI1:		CLR		R0					;Clear the carry flag bit
-			CALL	@CMPAC2				;Is MANT<MANT' (Compare AC' to AC)
-			JH		DIVI2				;YES =>DIVI2
+DIVI1:	CLR	R0			;Clear the carry flag bit
+	CALL	@CMPAC2			;Is MANT<MANT' (Compare AC' to AC)
+	JH	DIVI2			;YES =>DIVI2
 
-			CALL	@SUBAC				;Subtract AC'from AC (Dividend - Divisor)
-			SETO	R0					;Set the carry flag bit
+	CALL	@SUBAC			;Subtract AC'from AC (Dividend - Divisor)
+	SETO	R0			;Set the carry flag bit
 
-DIVI2:		MOVB	*R8,R0				;Get the current byte
-			SLA		R0,1				;Shift Result 1 bit R0 is set with carry bit in the lsb byte ,i.e 0x00 or 0xff
-			MOVB	R0,*R8				;Copy the result back
-			DEC		@2*R2(WP2)			;more bits in this byte?
-			JNE		DIVI3				;If not finished with this byte => DIVI3
+DIVI2:	MOVB	*R8,R0			;Get the current byte
+	SLA	R0,1			;Shift Result 1 bit R0 is set with carry bit in the lsb byte ,i.e 0x00 or 0xff
+	MOVB	R0,*R8			;Copy the result back
+	DEC	@2*R2(WP2)		;more bits in this byte?
+	JNE	DIVI3			;If not finished with this byte => DIVI3
 
-			DEC		@2*R3(WP2)			;Have we finished with AC?
-			JEQ		DIVI4				;Yes => DIVI4
+	DEC	@2*R3(WP2)		;Have we finished with AC?
+	JEQ	DIVI4			;Yes => DIVI4
 
-			INC		R8					;Increment byte pointer
-			LI		R0,8				;Number of bits per bytes
-			MOV		R0,@2*R2(WP2)		;R2 (WP2) holds number of bits
+	INC	R8			;Increment byte pointer
+	LI	R0,8			;Number of bits per bytes
+	MOV	R0,@2*R2(WP2)		;R2 (WP2) holds number of bits
 
-DIVI3:		CALL	@SLEFT				;Shift AC to the Left (Dividend is result of subtraction)
-			JNC		DIVI1				;No carry => DIVI1
+DIVI3:	CALL	@SLEFT			;Shift AC to the Left (Dividend is result of subtraction)
+	JNC	DIVI1			;No carry => DIVI1
 ;
 ; This step avoids having to do a compare
 ;
-			CALL	@SUBAC				;MANT=MANT-MANT'
-			SETO	R0					;set carry in bit
-			JMP		DIVI2
+	CALL	@SUBAC			;MANT=MANT-MANT'
+	SETO	R0			;set carry in bit
+	JMP	DIVI2
 
-DIVI4:		CALL	@SLEFT				;;Calculate the rounding bit
-			JOC		DIVI5
-			CALL	@CMPAC2
-			STST	ST
+DIVI4:	CALL	@SLEFT			;;Calculate the rounding bit
+	JOC	DIVI5
+	CALL	@CMPAC2
+	STST	ST
 
-DIVI5:		MOV		@2*R5(WP2),R5			;Get results into  AC
-			MOV		@2*R6(WP2),R6
-			MOV		@2*R7(WP2),R7
+DIVI5:	MOV	@2*R5(WP2),R5		;Get results into  AC
+	MOV	@2*R6(WP2),R6
+	MOV	@2*R7(WP2),R7
 
-			TMB		R5,0				;Normalised?
-			JEQ		DIVI6				;Yes => DIVI6
+	TMB	R5,0			;Normalised?
+	JEQ	DIVI6			;Yes => DIVI6
 
-			CALL	@LEFT				;Rotate rounding bit depending on flags above
-			JMP		MUL5				;into result
+	CALL	@LEFT			;Rotate rounding bit depending on flags above
+	JMP	MUL5			;into result
 
-DIVI6:		LI		R0,256
-			AB		R0,@2*R7+1(WP)		;Add 1 to the exponent
-			JNE		MUL5
-			SB		R0,@2*R7+1(WP)
-			STST	ST					;Save Flag
-			JMP		MUL5A
+DIVI6:	LI	R0,256
+	AB	R0,@2*R7+1(WP)		;Add 1 to the exponent
+	JNE	MUL5
+	SB	R0,@2*R7+1(WP)
+	STST	ST			;Save Flag
+	JMP	MUL5A
 
 ;FLOATING POINT MULTIPLICATION
 ;
-;     NAME:      FPMUL
-;     FUNCTION:  AC=AC*AC'. The number in AC is multiplied by
-;                the number in AC' (which is on the stack) and the result is placed in AC.
+;	NAME:	FPMUL
+;	FUNCTION: AC=AC*AC'. The number in AC is multiplied by
+;		the number in AC' (which is on the stack) and the result is placed in AC.
 ;
-;			SP->	|RETURN	|
-;			SP+2	| 	R5 	|
-;			SP+4	|	R6	|
-;			SP+6	|	R7	|		=>		SP->	|RETURN |
+;	SP->	|RETURN	|
+;	SP+2	|R5 	|
+;	SP+4	|R6	|
+;	SP+6	|R7	|=>SP	->|RETURN |
 ;
 ;
-;WP2 is on stack is declared to hold the result and other temporary variables
-;  WP2 = SP - 32
+;	WP2 is on stack is declared to hold the result and other temporary variables
+;	WP2 = SP - 32
 ;
-;	WP2 -> R1 holds Saved R5'
+;	WP2 	-> R1 holds Saved R5'
 ;		-> R2 holds Number of bits per byte
 ;		-> R3 holds Number of bytes in mantissa
 ;		-> R4 holds resultant sign
@@ -672,85 +652,85 @@ DIVI6:		LI		R0,256
 ;
 
 _fpmul::	CALL	@GETAC'			;Get Stack into AC'
-			CALL	@GETAC			;Get FPA into AC Now are now ready for AC*AC'
-			CALL	@EXX
+	CALL	@GETAC			;Get FPA into AC Now are now ready for AC*AC'
+	CALL	@EXX
 
-FPMUL:		MOVB	@2*R7'+1(WP),R0		;Is AC' EXPN zero
-        	JNE		MUL1_A				;result is zero
-        	B		@ZERO
+FPMUL:	MOVB	@2*R7'+1(WP),R0		;Is AC' EXPN zero
+	JNE	MUL1_A			;result is zero
+	B	@ZERO
 
-MUL1_A:		MOVB	@2*R7+1(WP),R4		; Is AC EXPN zero?
-			JNE		MUL1_B
-			B		@ZERO
+MUL1_A:	MOVB	@2*R7+1(WP),R4		; Is AC EXPN zero?
+	JNE	MUL1_B
+	B	@ZERO
 
-MUL1_B:		AB		R0,R4      			;Adjust exponent by calling EXPSGN with R4
-			STST	ST					;This is needed for EXPSGN
-		 	MOV		SP,WP2				;WP2 will be used as Workspace Pointer on the stack
-        	AI		WP2,-32				;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
-										;Higher registers R11 to R15  not used as they will be overwritten during calls
-			LI		R0,5				;Note, the code supports 5 bytes (40bit)
-			MOV		R0,@2*R3(WP2)		;WP2->R9 holds the number of bytes in mantissa
+MUL1_B:	AB	R0,R4			;Adjust exponent by calling EXPSGN with R4
+	STST	ST			;This is needed for EXPSGN
+	MOV	SP,WP2			;WP2 will be used as Workspace Pointer on the stack
+	AI	WP2,-32			;Allocate Stack Registers R0 to R7. R5, R6, R7 holds the result, R4 Holds sign
+					;Higher registers R11 to R15  not used as they will be overwritten during calls
+	LI	R0,5			;Note, the code supports 5 bytes (40bit)
+	MOV	R0,@2*R3(WP2)		;WP2->R9 holds the number of bytes in mantissa
 
 ;  CALL EXPSGN to
 ;  1.Exclusive OR Signs to get Resultant Sign
 ;  2.Subtract Divisor Exponenet from Dividend Exponent
 ;  Place both these results onto the result space allocated on the stack
 ;
-			MOV		R5',@2*R1(WP2)		;preserve AC' sign and msb as it is modified in EXPSGN
-			CALL 	@EXPSGN     		;calculate sign and (EXP-EXP') using R4
+	MOV	R5',@2*R1(WP2)		;preserve AC' sign and msb as it is modified in EXPSGN
+	CALL 	@EXPSGN     		;calculate sign and (EXP-EXP') using R4
 ;
 ; Move AC onto the stack workspace
 ;
-			MOV		R5,@2*R5(WP2)		;Save AC
-			MOV		R6,@2*R6(WP2)		;Save AC
-			MOVB	R7,@2*R7(WP2)		;Save AC - don't over write exponent
-			CALL	@ZERO				;Clear AC for result
+	MOV	R5,@2*R5(WP2)		;Save AC
+	MOV	R6,@2*R6(WP2)		;Save AC
+	MOVB	R7,@2*R7(WP2)		;Save AC - don't over write exponent
+	CALL	@ZERO			;Clear AC for result
 
-			MOV		WP2,R8				;R8 -> multiplier byte on stack i.e. AC
-			AI		R8,2*R7				;this is MSB of R7 or LSB of mantissa
+	MOV	WP2,R8			;R8 -> multiplier byte on stack i.e. AC
+	AI	R8,2*R7			;this is MSB of R7 or LSB of mantissa
 
-MUL1:		LI		R0,8				;Number of bits per byte is 8 but the first byte carries the sign bit
-			MOV		R0,@2*R2(WP2)		;WP2->R8 hold number of bits per byte
-			MOVB	*R8,R4				;Get new byte
-			SWPB	R4
+MUL1:	LI	R0,8			;Number of bits per byte is 8 but the first byte carries the sign bit
+	MOV	R0,@2*R2(WP2)		;WP2->R8 hold number of bits per byte
+	MOVB	*R8,R4			;Get new byte
+	SWPB	R4
 
-MUL2:		SRL		R4,1				;look for carry
-			JNC		MUL3				;If carry then add
-			CALL	@ADDAC				;Add AC' to the result
+MUL2:	SRL	R4,1			;look for carry
+	JNC	MUL3			;If carry then add
+	CALL	@ADDAC			;Add AC' to the result
 
-MUL3:		CALL	@RIGHT				;Rotate result to the right 1 bit
-			STST	ST					;Save carry
-			DEC		@2*R2(WP2)			;Finished with this byte?
-			JNE		MUL2				;No => MUL2
-			DEC		R8					;Point to next byte to the left
-			DEC		@2*R3(WP2)			;Have we finished with AC?
-			JNE		MUL1				;5 Bytes completed?
+MUL3:	CALL	@RIGHT			;Rotate result to the right 1 bit
+	STST	ST			;Save carry
+	DEC	@2*R2(WP2)		;Finished with this byte?
+	JNE	MUL2			;No => MUL2
+	DEC	R8			;Point to next byte to the left
+	DEC	@2*R3(WP2)		;Have we finished with AC?
+	JNE	MUL1			;5 Bytes completed?
 ;
 ; Fixup exponent
 ;
-			MOVB	@2*R7+1(WP2),@2*R7+1(WP)	;Get exponent
-			TMB		R5,0				;Is result mormalised?
-			JEQ		MUL4
-			LST		ST					;Get last carry
-			CALL	@LEFT				;Rotate result to the left with last carry
-										;depending on status register set during RIGHT call above
-			MOVB	@2*R7+1(WP),R0		;get exponent
-			JEQ		MULT5B
-			AI		R0,-256				;subtract 1 from exponent
-			MOVB	R0,@2*R7+1(WP)		;save it
+	MOVB	@2*R7+1(WP2),@2*R7+1(WP)	;Get exponent
+	TMB	R5,0			;Is result mormalised?
+	JEQ	MUL4
+	LST	ST			;Get last carry
+	CALL	@LEFT			;Rotate result to the left with last carry
+					;depending on status register set during RIGHT call above
+	MOVB	@2*R7+1(WP),R0		;get exponent
+	JEQ	MULT5B
+	AI	R0,-256			;subtract 1 from exponent
+	MOVB	R0,@2*R7+1(WP)		;save it
 MUL4:
 MUL5:
 MUL5A:
-			ANDI	R5,CLR_SIGN			;Clear the sign bit
-			SOCB	@2*R4(WP2),R5		;Set the sign bit
-			JMP		MULSA1
+	ANDI	R5,CLR_SIGN		;Clear the sign bit
+	SOCB	@2*R4(WP2),R5		;Set the sign bit
+	JMP	MULSA1
 
-MULT5B:		CALL	@ZERO
-			RET
+MULT5B:	CALL	@ZERO
+	RET
 
-MULSA1:		CALL	@PUTAC
-			MOV		@2*R1(WP2),R5'		;Recover R5'
-			RET
+MULSA1:	CALL	@PUTAC
+	MOV	@2*R1(WP2),R5'		;Recover R5'
+	RET
 
 ;
 ; Adjust exponent and calculate sign.
@@ -758,28 +738,28 @@ MULSA1:		CALL	@PUTAC
 ; WP2 points to the workspace on the stack
 ;
 ;
-EXPSGN:		LST		ST					;What was the result of AB R0,R4?
-			JOC		EXPS1				;If greater than i.e MSB == 0 (Carry => EXPS1)
-			AI		R4,EXPN*256			;Adjust exponent for radix 2
-			JOC		EXPS2				;Carry => EXPS2
-			JMP		EXPS3				;Underflow
+EXPSGN:	LST	ST			;What was the result of AB R0,R4?
+	JOC	EXPS1			;If greater than i.e MSB == 0 (Carry => EXPS1)
+	AI	R4,EXPN*256		;Adjust exponent for radix 2
+	JOC	EXPS2			;Carry => EXPS2
+	JMP	EXPS3			;Underflow
 
 
-EXPS1:		AI		R4,EXPN*256			;Adjust exponent
-			JOC		EXPS3				;carry => overflow
+EXPS1:	AI	R4,EXPN*256		;Adjust exponent
+	JOC	EXPS3			;carry => overflow
 
-EXPS2:		MOVB	R4,@2*R7+1(WP2)		;This is the resultant EXPN
+EXPS2:	MOVB	R4,@2*R7+1(WP2)		;This is the resultant EXPN
 ;
 ;For the algorithm to work, the leading sign bit must be set to 1 and then
 ;the resultant sign assigned after the division
 ;
-			MOVB	R5',R0				;Get AC' Sign
-			TSMB	R5',0				;Set both of them to 1, first AC'
-			XOR		R5,R0				;XOR to determine resultant sign
-			TSMB	R5,0				;Set the sign for AC as well new sign
-			ANDI	R0,SIGN*256			;Isolate sign bit
-			MOVB	R0,@2*R4(WP2)		;Sign of resultant into R4 (WORKSPACE STACK)
-EXPS3:		RET
+	MOVB	R5',R0			;Get AC' Sign
+	TSMB	R5',0			;Set both of them to 1, first AC'
+	XOR	R5,R0			;XOR to determine resultant sign
+	TSMB	R5,0			;Set the sign for AC as well new sign
+	ANDI	R0,SIGN*256		;Isolate sign bit
+	MOVB	R0,@2*R4(WP2)		;Sign of resultant into R4 (WORKSPACE STACK)
+EXPS3:	RET
 
 ;
 ;  Change the sign of the Floating Point number in the Accumulator
@@ -787,148 +767,148 @@ EXPS3:		RET
 
 _minusfa::
 MINUSFPA:
-			MOV		@FPA,R4
-			LI		R0,SIGN*256
-			XOR		R0,R4
-			MOV		R4,@FPA
-			RET
+	MOV	@FPA,R4
+	LI	R0,SIGN*256
+	XOR	R0,R4
+	MOV	R4,@FPA
+	RET
 ;
 ;Add AC' to AC..Result in AC and set carry flag if applicable
 ;
 
-ADDAC:  	PUSH	R6'				;Preserve AC'
-			PUSH	R5'
-			CLR		R0
-			INC		R0
-			STST	ST				;Set default flag to no carry
-			AB		R7',R7
-			JNC		AAC1
-			INC		R6'
-			JNC		AAC1
-			INC		R5'
-			JNC		AAC1
-			STST	ST
+ADDAC:  	PUSH	R6'			;Preserve AC'
+	PUSH	R5'
+	CLR	R0
+	INC	R0
+	STST	ST			;Set default flag to no carry
+	AB	R7',R7
+	JNC	AAC1
+	INC	R6'
+	JNC	AAC1
+	INC	R5'
+	JNC	AAC1
+	STST	ST
 
 ; Now add the other registers together
 
-AAC1:		A		R6',R6
-			JNC		AAC2
-			INC		R5'
-			JNC		AAC2
-			STST	ST
+AAC1:	A	R6',R6
+	JNC	AAC2
+	INC	R5'
+	JNC	AAC2
+	STST	ST
 
-AAC2:		A		R5',R5
-			JNC		AAC3
-			STST	ST				;Carry to AC has occured i.e. R5
+AAC2:	A	R5',R5
+	JNC	AAC3
+	STST	ST			;Carry to AC has occured i.e. R5
 
-AAC3:		POP		R5'				;Restor AC'
-			POP		R6'
-			LST		ST				;Load status register with carry/overflow result
-			RET
+AAC3:	POP	R5'			;Restore AC'
+	POP	R6'
+	LST	ST			;Load status register with carry/overflow result
+	RET
 
 ;
 ;Subtract AC'from AC. -
 ; From Embedded Systesm with ARM Cortx-M in Assebly Language Zhu
 ;
-; Overflow Flag		Signed Addition			Signed Subtraction
+; Overflow Flag		Signed Addition		Signed Subtraction
 
-;      	0			Result is correct		Result is correct
-;		1			Result is incorrect		Result is incorrect
+;	0		Result is correct		Result is correct
+;	1		Result is incorrect		Result is incorrect
 ;
 ; Carry Flag		Unsigned Addition		Unsigned Subtraction
 
-;		0			Result is correct		Result is incorrect
-;		1			Result is incorrect		Result is correct
+;	0		Result is correct		Result is incorrect
+;	1		Result is incorrect		Result is correct
 ;
 ;
 ;Subtract AC'from AC. Need to preserve AC'
 ;
 ;
-SUBAC: 		PUSH	R5'
-			PUSH	R6'
-			CLR		R0
-			CB		R7',R7
-			JLE		SUBAC1
-			INC		R6'
-			JNC		SUBAC1
-			INC		R5'
-			JNC		SUBAC1
-			SETO	R0
+SUBAC: 	PUSH	R5'
+	PUSH	R6'
+	CLR	R0
+	CB	R7',R7
+	JLE	SUBAC1
+	INC	R6'
+	JNC	SUBAC1
+	INC	R5'
+	JNC	SUBAC1
+	SETO	R0
 
-SUBAC1:		SB		R7',R7
-			C		R6',R6
-			JLE		SUBAC2
-			INC		R5'
-			JNC		SUBAC2
-			SETO	R0
+SUBAC1:	SB	R7',R7
+	C	R6',R6
+	JLE	SUBAC2
+	INC	R5'
+	JNC	SUBAC2
+	SETO	R0
 
-SUBAC2:		S		R6',R6
-			C		R5',R5
-			JLE		SUBAC3
-			SETO	R0			;carry flag
+SUBAC2:	S	R6',R6
+	C	R5',R5
+	JLE	SUBAC3
+	SETO	R0			;carry flag
 
-SUBAC3:		S		R5',R5
-			MOV		*SP+,R6'	;POP R6' and R5'
-			MOV		*SP+,R5'
-			INC		R0
-			RET
+SUBAC3:	S	R5',R5
+	MOV	*SP+,R6'			;POP R6' and R5'
+	MOV	*SP+,R5'
+	INC	R0
+	RET
 ;
 ;Compare AC to AC '
 ;
 ;
-;     NAME:      CMP
-;     FUNCTION:  Compare AC to AC' (Logically)
-;    	AC=AC' => JEQ.
-;       AC>AC' => JH
-;       AC<AC' => JL
+; NAME:	CMP
+; FUNCTION:  Compare AC to AC' (Logically)
+;	AC=AC' => JEQ.
+;	AC>AC' => JH
+;	AC<AC' => JL
 ;Source Destination Logical Arithmetic Equal
-;		 S    D   L A E
-;		FFFF 0000 1 0 0
-;		7FFF 0000 1 1 0
-;		8000 0000 1 0 0
-;		8000 7FFF 1 0 0
-;		7FFF 7FFF 0 0 1
-;		7FFF 8000 0 1 0
-;		7FFE 7FFF 0 0 0
+;	 S    D   L A E
+;	FFFF 0000 1 0 0
+;	7FFF 0000 1 1 0
+;	8000 0000 1 0 0
+;	8000 7FFF 1 0 0
+;	7FFF 7FFF 0 0 1
+;	7FFF 8000 0 1 0
+;	7FFE 7FFF 0 0 0
 ;
 ; CMP AC to AC'
 ;
-CMPAC:		C		R5,R5'
-			JNE		CMPAC1
-			C		R6,R6'
-			JNE		CMPAC1
-			CB		R7,R7'
-CMPAC1:		RET
+CMPAC:	C	R5,R5'
+	JNE	CMPAC1
+	C	R6,R6'
+	JNE	CMPAC1
+	CB	R7,R7'
+CMPAC1:	RET
 
 ;
 ; CMP AC' to AC
 ;
-CMPAC2:		C		R5',R5
-			JNE		CMPAC2A
-			C		R6',R6
-			JNE		CMPAC2A
-			CB		R7',R7
+CMPAC2:	C	R5',R5
+	JNE	CMPAC2A
+	C	R6',R6
+	JNE	CMPAC2A
+	CB	R7',R7
 CMPAC2A:	RET
 
 
 ;FLOATING POINT COMPARE OR TEST IF EQUAL.  AC - AC'  (Stack - FPA)
 
-FPCMP:		MOV		R5,R0          		 ;Are signs the same?
-        	XOR  	R5',R0
-        	ANDI	R0,SIGN*256
-        	JEQ		CMP1     			;Yes => CMP1
-        	CB		R5',R5				;Not equal but set the flags
-        	RET							;Return not equal
+FPCMP:	MOV	R5,R0			;Are signs the same?
+	XOR  	R5',R0
+	ANDI	R0,SIGN*256
+	JEQ	CMP1     			;Yes => CMP1
+	CB	R5',R5			;Not equal but set the flags
+	RET				;Return not equal
 
-CMP1:   	TMB		R5,0			 	;Negative numbers?
-       		JNE		CMP2     			;No => CMP2
+CMP1:	TMB	R5,0		 	;Negative numbers?
+	JNE	CMP2			;No => CMP2
 
-       		CALL 	@CMP2				;Compare abs. Value
-CMP1_R:		RET
+	CALL 	@CMP2			;Compare abs. Value
+CMP1_R:	RET
 
-CMP2:   	CB		@2*R7+1(WP),@2*R7'+1(WP)
-			JNE		CMP1_R
-        	JMP		CMPAC      			;Compare AC with AC '
+CMP2:	CB	@2*R7+1(WP),@2*R7'+1(WP)
+	JNE	CMP1_R
+	JMP	CMPAC      			;Compare AC with AC '
 
 ;
 ;
@@ -936,8 +916,8 @@ CMP2:   	CB		@2*R7+1(WP),@2*R7'+1(WP)
 ;
 
 _ccfabs::	CALL	@GETCCARG			;Get X into AC
-FPABS:		TCMB	R5,0
-			B		@PUTAC
+FPABS:	TCMB	R5,0
+	B	@PUTAC
 
 ;
 ;	Double precision comparisons
@@ -947,43 +927,41 @@ FPABS:		TCMB	R5,0
 ;
 ;TOS >= FA?
 ;
-_fpge::		CALL	@DCOMPAR
-			JHE		YES			;z => equal
-			JMP		NO			;remaining tests are shared
+_fpge::	CALL	@DCOMPAR
+	JHE	YES			;z => equal
+	JMP	NO			;remaining tests are shared
 ;
 ;TOS > FA?
 ;
-_fpgt::		CALL	@DCOMPAR
-			JLE		NO			;z => equal
-
-YES:		LI		R4,1		;load "true"
-			RET
+_fpgt::	CALL	@DCOMPAR
+	JLE	NO			;z => equal
+YES:	LI	R4,1			;load "true"
+	RET
 ;
 ;TOS <= FA?
 ;
-_fple::		CALL	@DCOMPAR
-			JLE		YES
-			JMP		NO
+_fple::	CALL	@DCOMPAR
+	JLE	YES
+	JMP	NO
 ;
 ;TOS < FA?
 ;
-_fplt::		CALL	@DCOMPAR
-			JL		YES
-
-NO:			CLR		R4			;load "false"
-			RET
+_fplt::	CALL	@DCOMPAR
+	JL	YES
+NO:	CLR	R4			;load "false"
+	RET
 ;
 ;TOS == FA?
 ;
-_fpeq::		CALL	@DCOMPAR
-			JEQ		YES
-			JMP		NO
+_fpeq::	CALL	@DCOMPAR
+	JEQ	YES
+	JMP	NO
 ;
 ;TOS != FA?
 ;
-_fpne::		CALL	@DCOMPAR
-			JNE		YES
-			JMP		NO
+_fpne::	CALL	@DCOMPAR
+	JNE	YES
+	JMP	NO
 
 
 ;
@@ -994,19 +972,19 @@ _fpne::		CALL	@DCOMPAR
 ;  Compare TOS with FPA i.e. TOS >= FPA or AC >= AC'
 
 ;
-;			SP->	|RETURN1|
-;			SP+2	|RETURN2|
-;			SP+4	| 	R5	|
-;			SP+6	|	R6	|				SP->	|RETURN1|
-;			SP+8	|	R7	|		=>		SP+2	|RETURN2|
+;	SP->	|RETURN1	|
+;	SP+2	|RETURN2	|
+;	SP+4	|R5	|
+;	SP+6	|R6	|		SP->	|RETURN1|
+;	SP+8	|R7	|	=>	SP+2	|RETURN2|
 ;
 DCOMPAR:
-			POP		R4				;Get Compare Function Return Address (RETURN 1)
-			CALL	@GETAC'			;Get AC' from Stack
-			CALL	@GETAC			;Get AC from FPA
-			CALL	@EXX			;;Swap them so we have AC - AC'  (Stack - FPA)
-			PUSH	R4				;Restore Return Address 1
-			B		@FPCMP
+	POP	R4			;Get Compare Function Return Address (RETURN 1)
+	CALL	@GETAC'			;Get AC' from Stack
+	CALL	@GETAC			;Get AC from FPA
+	CALL	@EXX			;;Swap them so we have AC - AC'  (Stack - FPA)
+	PUSH	R4			;Restore Return Address 1
+	B	@FPCMP
 ;
 ;FLOATING POINT INTEGER
 ;
@@ -1021,36 +999,36 @@ DCOMPAR:
 ;     EXAMPLE:   INT(3.7)=3
 ;                INT(-3.7)=-3
 
-INT:    	CLR		R4
-			LI		R0,256*(EXPN+1)
-			MOVB	@2*R7+1(WP),R4      ;Is exponent smaller than 0x81H
-        	SB  	R0,R4 				;than zero? DA-SA => DA
-			JLT		INT3				;Yes => Result zero
+INT:	CLR	R4
+	LI	R0,256*(EXPN+1)
+	MOVB	@2*R7+1(WP),R4		;Is exponent smaller than 0x81H
+	SB	R0,R4 			;than zero? DA-SA => DA
+	JLT	INT3			;Yes => Result zero
 
-INT1A:     	SWPB	R4
-			INC  	R4					;Add 1 to include the sign bit
+INT1A:	SWPB	R4
+	INC  	R4			;Add 1 to include the sign bit
 
-			CALL	@EXX				;Exchange into AC'
-			CALL	@ZERO				;Zero AC which will be the mask
+	CALL	@EXX			;Exchange into AC'
+	CALL	@ZERO			;Zero AC which will be the mask
 
-INT1:   	CALL	@SCF				;Sets all the bits that have and
-			CALL 	@RIGHT      		;exponent greater than or equal to zero
-        	DEC  	R4
-        	JNE		INT1
+INT1:   	CALL	@SCF			;Sets all the bits that have and
+	CALL 	@RIGHT      		;exponent greater than or equal to zero
+	DEC  	R4
+	JNE	INT1
 
-			MOVB	@2*R7'+1(WP),@2*R7+1(WP)	;get exponent
-			MOV		R7',R0
-			INV		R0
-        	SZCB	R0,R7				;We now have the mask in AC' so AND all bits in AC
-        	MOV		R6',R0
-			INV		R0
-        	SZC		R0,R6				;that has an exponent
-        	MOV		R5',R0
-			INV		R0
-        	SZC		R0,R5				;less than using AND
+	MOVB	@2*R7'+1(WP),@2*R7+1(WP)	;get exponent
+	MOV	R7',R0
+	INV	R0
+	SZCB	R0,R7			;We now have the mask in AC' so AND all bits in AC
+	MOV	R6',R0
+	INV	R0
+	SZC	R0,R6			;that has an exponent
+	MOV	R5',R0
+	INV	R0
+	SZC	R0,R5			;less than using AND
 
-INT2:   	B		@ADD_PAC      		;Put AC into FPA
-INT3:		B		@ZERO
+INT2:	B	@ADD_PAC      		;Put AC into FPA
+INT3:	B	@ZERO
 
 
 
@@ -1059,12 +1037,12 @@ INT3:		B		@ZERO
 ;FRAC(X) is calculated by X-INT(X).
 
 FRAC:   	CALL	@PUSHAC'
-			CALL 	@EQUAL
-			CALL 	@INT
-			CALL	@EXX			;AC = X, AC' = INT(X)
-        	CALL 	@FPSUB
-        	CALL	@POPAC'
-        	JMP		INT2
+	CALL 	@EQUAL
+	CALL 	@INT
+	CALL	@EXX			;AC = X, AC' = INT(X)
+	CALL 	@FPSUB
+	CALL	@POPAC'
+	JMP	INT2
 
 ;MODULUS.
 
@@ -1072,13 +1050,13 @@ FRAC:   	CALL	@PUSHAC'
 ; X MOD Y is calculated by FRAC (X / Y) * Y
 ;
 _ccmod::	CALL	@GETCCARG			;Get X Y into AC and AC'
-			CALL	@EXX				;AC = X, AC' = Y
+	CALL	@EXX			;AC = X, AC' = Y
 
-MOD:    	CALL 	@FPDIV
-        	JOC		MOD1
-       		CALL 	@FRAC
-        	B		@FPMUL
-MOD1:		RET
+MOD:	CALL 	@FPDIV
+	JOC	MOD1
+	CALL 	@FRAC
+	B	@FPMUL
+MOD1:	RET
 
 ;
 ;SQUARE ROOT.
@@ -1093,35 +1071,35 @@ MOD1:		RET
 
 _ccsqrt::	CALL	@GETCCARG			;Get X into AC
 ;
-SQR:    	MOVB	@2*R7+1(WP),R4		; Is AC null?
-        	JEQ		MOD1				;Yes => Return
+SQR:	MOVB	@2*R7+1(WP),R4		; Is AC null?
+	JEQ	MOD1				;Yes => Return
 
-        	TMB		R5,0				;Is AC negative?
-        	JEQ		MOD1				;Yes => Return
+	TMB	R5,0				;Is AC negative?
+	JEQ	MOD1				;Yes => Return
 
-       		CALL 	@EQUAL      		;AC'= AC = X
-        	AI		R4,EXPN*256     	;First iteration, e.g. 0x82 -> 0x02
-        	SRA  	R4					;Halve the exponent -> 0x01
-        	AI		R4,EXPN*256			;Comparative value -> 0x81
-         	AI		R4,-256*20         	; is the half exponent
-        	PUSH 	R4         			;Save accuracy test
+	CALL	@EQUAL			;AC'= AC = X
+	AI	R4,EXPN*256			;First iteration, e.g. 0x82 -> 0x02
+	SRA	R4			;Halve the exponent -> 0x01
+	AI	R4,EXPN*256			;Comparative value -> 0x81
+	AI	R4,-256*20			; is the half exponent
+	PUSH 	R4			;Save accuracy test
 
-SQR1:   	CALL	@PUSHAC         	;Save the number X
-        	CALL 	@FPDIV      		;Divide by and add
-        	CALL 	@FPADD      		;previous Interation X is first guess
-        	DEC  	R7         			;Half value (LSB of R7 is exponent)
-        	CALL	@PUSHAC         	;Save new Iteration I(n+1)
-        	CALL 	@FPSUB      		;Calculate the difference between Iterations I(n+1) - I(n)
-        	MOVB	@2*R7+1(WP),R4      ;the two and place new exponent in msb R4
-        	CALL	@POPAC'        		;Get AC' = I(n+1)
-        	CALL	@POPAC         		;Get AC = X
-        	CB		R4,*SP				;SP points to target accuracy on the stack
-        	JHE		SQR1				;
-        	MOV		*SP+,R0         	;Remove s. value
-        	CALL	@EXX				;AC = I(n+a)
-        	CLR		R0          		;Reset carry
-        	INC		R0
-SQR2:   	B		@ADD_PAC      		;Get AC'
+SQR1:	CALL	@PUSHAC			;Save the number X
+	CALL	@FPDIV			;Divide by and add
+	CALL	@FPADD			;previous Interation X is first guess
+	DEC	R7			;Half value (LSB of R7 is exponent)
+	CALL	@PUSHAC			;Save new Iteration I(n+1)
+	CALL	@FPSUB			;Calculate the difference between Iterations I(n+1) - I(n)
+	MOVB	@2*R7+1(WP),R4		;the two and place new exponent in msb R4
+	CALL	@POPAC'			;Get AC' = I(n+1)
+	CALL	@POPAC			;Get AC = X
+	CB	R4,*SP			;SP points to target accuracy on the stack
+	JHE	SQR1			;
+	MOV	*SP+,R0			;Remove s. value
+	CALL	@EXX			;AC = I(n+a)
+	CLR	R0			;Reset carry
+	INC	R0
+SQR2:	B	@ADD_PAC			;Get AC'
 
 ;TANGENS.
 
@@ -1129,143 +1107,143 @@ SQR2:   	B		@ADD_PAC      		;Get AC'
 
 
 _cctan::	CALL	@GETCCARG			;Get X from the stack into AC
-TAN:    	CALL 	@EQUAL
-			CALL	@PUSHAC'			;Save X
-        	CALL 	@COS
-        	CALL	@POPAC'				;Get X
-        	CALL	@EXX				;AC' = COS(X)
-        	CALL	@PUSHAC'			;Save COS(X)
-        	CALL 	@SIN				;AC = SIN(X)
-        	CALL	@POPAC'				;AC' = COS(X)
-        	CALL 	@FPDIV
-        	JMP		SQR2
+TAN:	CALL 	@EQUAL
+	CALL	@PUSHAC'			;Save X
+	CALL 	@COS
+	CALL	@POPAC'			;Get X
+	CALL	@EXX			;AC' = COS(X)
+	CALL	@PUSHAC'			;Save COS(X)
+	CALL 	@SIN			;AC = SIN(X)
+	CALL	@POPAC'			;AC' = COS(X)
+	CALL 	@FPDIV
+	JMP	SQR2
 
 ;
 ;CALCULATE COSINE.
 ;COS(X) is calculated using SIN(PI/2-X)
 
-_cccos::	CALL	@GETCCARG				;Get X  from the stack into AC
-COS:   		CALL	@EXX					;Save to AC'
-        	CALL 	@ACPI					;AC = PI
-        	DEC  	R7						;Divide by 2 to get PI
-        	CALL 	@FPSUB
-        	JMP		SIN
+_cccos::	CALL	@GETCCARG			;Get X  from the stack into AC
+COS:	CALL	@EXX			;Save to AC'
+	CALL	@ACPI			;AC = PI
+	DEC	R7			;Divide by 2 to get PI
+	CALL	@FPSUB
+	JMP	SIN
 ;
 ;CALCULATE SINE.
 ;
 ;SIN (X) is calculated as follows:
-; If ABS (X)> 2 * PI then X = FRAC (X / (2 * PI)) * 2 * PI
-; If X < 0 then X = X + 2 * PI
-; If X > PI then X = X - PI, sign -
-; If X > PI / 2 then X = PI-X
-; Y = X / 3, Z = Y ^ 2
-; SIN (Y) = Y (((((Z + K1) Z + K2) Z + K3) Z + K4) Z + K5) / K5
-; K1 = -110 K2 = 7920 K3 = -332640
-; K4 = 6652800 K5 = -39916800
-; SIN (X) = 4 * (.75 * SIN (Y) -SIN (Y) ^ 3)
+; 	If ABS (X)> 2 * PI then X = FRAC (X / (2 * PI)) * 2 * PI
+; 	If X < 0 then X = X + 2 * PI
+; 	If X > PI then X = X - PI, sign -
+; 	If X > PI / 2 then X = PI-X
+; 	Y = X / 3, Z = Y ^ 2
+; 	SIN (Y) = Y (((((Z + K1) Z + K2) Z + K3) Z + K4) Z + K5) / K5
+; 	K1 = -110 K2 = 7920 K3 = -332640
+; 	K4 = 6652800 K5 = -39916800
+; 	SIN (X) = 4 * (.75 * SIN (Y) -SIN (Y) ^ 3)
 ;
 ;The above is derived from the Taylor series expansion SUM ((-1)^n x^(2n+1))/(2n+1)! for n = 0 to 5
 ;
 
 _ccsin::	CALL	@GETCCARG			;Get X from the stack into AC
-SIN:   		CALL	@EXX             	;Save to AC'
+SIN:	CALL	@EXX			;Save to AC'
 
-SINC:   	CALL 	@ACPI       		;Put AC'= PI
-        	INC  	R7					;Increment exponent multiplies PI by 2
-        	CALL	@EXX				;Now get AC (X), 2*PI is in AC'
+SINC:	CALL	@ACPI			;Put AC'= PI
+	INC	R7			;Increment exponent multiplies PI by 2
+	CALL	@EXX			;Now get AC (X), 2*PI is in AC'
 
-        	LI		R0,EXPN-20    		;1E-7
-        	CB		@2*R7+1(WP),R0		;If the number (X) is smaller
-			JL		SIN7				;than 1E-7 then return
+	LI	R0,EXPN-20			;1E-7
+	CB	@2*R7+1(WP),R0		;If the number (X) is smaller
+	JL	SIN7			;than 1E-7 then return
 
-        	PUSH 	R5         			;Is ABS (X) > 2*PI
-        	TCMB	R5,0				;Clear sign bit
-       		CALL 	@FPCMP				;Compare AC to AC'
-        	POP  	R5
-        	JLE		SIN1A
-        	CALL 	@MOD     			;Yes => AC=AC MOD 2*PI
+	PUSH	R5			;Is ABS (X) > 2*PI
+	TCMB	R5,0			;Clear sign bit
+	CALL	@FPCMP			;Compare AC to AC'
+	POP	R5
+	JLE	SIN1A
+	CALL 	@MOD			;Yes => AC=AC MOD 2*PI
 
-SIN1A:  	TMB		R5,0        		;If AC < 0 then add
-			JNE		SIN2     			;2*PI to AC
-        	CALL 	@FPADD
+SIN1A:	TMB	R5,0			;If AC < 0 then add
+	JNE	SIN2			;2*PI to AC
+	CALL 	@FPADD
 
-SIN2:   	DEC  	R7'					;AC'= 2*PI => DEC R7 divides AC' by 2 to get PI
-        	CALL 	@FPCMP      		;Is  X > PI?
-        	STST	ST					;Save status flag on stack
-        	PUSH 	ST         			;Save status flag
-	       	JLE		SIN3     			;No => SIN3
-        	CALL 	@FPSUB      		;AC=AC-PI
+SIN2:	DEC  	R7'			;AC'= 2*PI => DEC R7 divides AC' by 2 to get PI
+	CALL 	@FPCMP			;Is  X > PI?
+	STST	ST			;Save status flag on stack
+	PUSH 	ST			;Save status flag
+	JLE	SIN3			;No => SIN3
+	CALL 	@FPSUB			;AC=AC-PI
 
-SIN3:   	DEC  	R7'					;AC'=PI/2 by decrementing exponent
-        	CALL 	@FPCMP        		;Is AC > PI/2?
-        	JLE   	SIN4     			;No => SIN4
-        	CALL	@EXX
-        	INC  	R7					;AC=PI-AC
-        	CALL 	@FPSUB
+SIN3:	DEC	R7'			;AC'=PI/2 by decrementing exponent
+	CALL 	@FPCMP			;Is AC > PI/2?
+	JLE	SIN4			;No => SIN4
+	CALL	@EXX
+	INC	R7			;AC=PI-AC
+	CALL	@FPSUB
 
-SIN4:   	MOV		R7,R0        		;If the number is smaller
-        	ANDI	R0,0FFH
-        	CI		R0,EXPN-20    		;than 1E-7 then return
-        	JL		SIN7A
+SIN4:	MOV	R7,R0			;If the number is smaller
+	ANDI	R0,0FFH
+	CI	R0,EXPN-20			;than 1E-7 then return
+	JL	SIN7A
 
-        	CALL	@EXX             	;Calcualte AC=AC/3
-        	LI		R5,02AAAH			;AC = 1/3
-        	LI		R6,0AAAAH
-        	LI		R7,0AA7FH
-        	CALL 	@FPMUL				;AC = X/3 = Y
+	CALL	@EXX			;Calcualte AC=AC/3
+	LI	R5,02AAAH			;AC = 1/3
+	LI	R6,0AAAAH
+	LI	R7,0AA7FH
+	CALL 	@FPMUL			;AC = X/3 = Y
 ;
 ; At this point we have Y = X/3
 ;
-        	LI		R8,SINK-6
-        	LI		R4,5
-        	CALL 	@COMSER				;Calculate Z=SIN(Y)
+	LI	R8,SINK-6
+	LI	R4,5
+	CALL 	@COMSER			;Calculate Z=SIN(Y)
 
- 			CALL 	@EQUAL      		;Save to AC'
-        	CALL 	@FPMUL      		;Calculate SIN(Y)^3
-        	CALL 	@FPMUL
+	CALL	@EQUAL			;Save to AC'
+	CALL	@FPMUL			;Calculate SIN(Y)^3
+	CALL	@FPMUL
 
-        	CALL	@PUSHAC         			;Save on the stack
-        	CALL	@EXX
-        	CALL 	@EQUAL      		;Calculate .75*SIN(Y)
+	CALL	@PUSHAC			;Save on the stack
+	CALL	@EXX
+	CALL 	@EQUAL			;Calculate .75*SIN(Y)
 
-          	DECT	R7					;SIN(Y)/4
- 			CALL	@EXX
-        	DEC  	R7					;SIN(Y)/2
-        	CALL 	@FPADD				;3/4 * SIN(Y)
-        	CALL	@EXX             	;Get SIN(X)^3
-        	CALL	@POPAC
-        	CALL	@EXX
-        	CALL 	@FPSUB      		;Subtract it, we now have AC= (.75 * SIN (Y) -SIN (Y) ^ 3)
-        	INCT	R7		          	;Multiply by 4=> AC = 4*AC
+	DECT	R7			;SIN(Y)/4
+	CALL	@EXX
+	DEC  	R7			;SIN(Y)/2
+	CALL 	@FPADD			;3/4 * SIN(Y)
+	CALL	@EXX			;Get SIN(X)^3
+	CALL	@POPAC
+	CALL	@EXX
+	CALL 	@FPSUB			;Subtract it, we now have AC= (.75 * SIN (Y) -SIN (Y) ^ 3)
+	INCT	R7			;Multiply by 4=> AC = 4*AC
 
-SIN7A:  	MOV		*SP+,ST    			;Get sign status from stack
-			LST		ST
-        	JLE		SIN7
+SIN7A:	MOV	*SP+,ST			;Get sign status from stack
+	LST	ST
+	JLE	SIN7
 
-			LI		R0,SIGN*256
-			XOR  	R0,R5
+	LI	R0,SIGN*256
+	XOR	R0,R5
 
-SIN7:		B		@ADD_PAC      	;Save AC'
+SIN7:	B	@ADD_PAC			;Save AC'
 
 ;
 ;Constants for calculating SINE.
 ;
-SINK:   WORD 0DC00H,00000H,00087H  ;K1
-        WORD 07780H,00000H,0008DH  ;K2
-        WORD 0A26CH,00000H,00093H  ;K3
-        WORD 04B07H,00000H,00097H  ;K4
-        WORD 09845H,04000H,0009AH  ;K5
+SINK:	WORD 0DC00H,00000H,00087H			;K1
+	WORD 07780H,00000H,0008DH			;K2
+	WORD 0A26CH,00000H,00093H			;K3
+	WORD 04B07H,00000H,00097H			;K4
+	WORD 09845H,04000H,0009AH			;K5
 
 ;
 ;	negate FA, and push address of MINUSFA
 ;	called to evaluate functions f(x) when the argument is
 ;	negative and f() satisfies f(-x)=-f(x)
 ;
-ODD:		CALL	@MINUSFPA
-			LI		R0,MINUSFPA
-			MOV		*SP,R4
-			MOV		R0,*SP
-			B		*R4
+ODD:	CALL	@MINUSFPA
+	LI	R0,MINUSFPA
+	MOV	*SP,R4
+	MOV	R0,*SP
+	B	*R4
 ;
 ;	NAME: _ccfloat
 ;
@@ -1302,21 +1280,21 @@ ODD:		CALL	@MINUSFPA
 ;
 ; - Stack offset is 2 due to two return addresses
 ;
-_ccfloat::	MOV		@2(SP),R4		;Get integer off the Stack to -> R4
+_ccfloat::	MOV	@2(SP),R4			;Get integer off the Stack to -> R4
 ;
 ;Small C Library call entry for float is _float::
 ;
 FLOAT:
-_float::	MOV		R4,R0        ;Is R4=0?
-        	JEQ		ZERO         ;YES => ZERO
+_float::	MOV	R4,R0			;Is R4=0?
+	JEQ	ZERO			;YES => ZERO
 
-			SLA		R0,1		;Is bit 8 negative?
-			STST 	ST			;Save sign in ST via status register
-			PUSH	ST
-			JNC		FLT1		;No => FLT1
-			NEG		R4			;Take 2's complemnet ST2 is unchanged
+	SLA	R0,1			;Is bit 8 negative?
+	STST 	ST			;Save sign in ST via status register
+	PUSH	ST
+	JNC	FLT1			;No => FLT1
+	NEG	R4			;Take 2's complemnet ST2 is unchanged
 
-FLT1:  	 	MOV		R4,R5		;Set mantissa
+FLT1:	MOV	R4,R5			;Set mantissa
         	CLR		R6
         	CLR		R7
         	LI		R4,EXPN+16	;Set inital value of exponent so we can normalise
@@ -1676,7 +1654,6 @@ LN1:		CALL 	@FLOAT				;R4 holds N
  			CALL	@EXX				;AC' = FLOAT(N)
  			INC		R7					;Divide by 2 to get LN(2)
  			CALL 	@FPMUL				;AC = N*LN(2)
- ;			CALL	@EXX
  			CALL	@POPAC'				;Get result into AC' so we save a call to EXX
  			CALL 	@FPADD      		;AC = 2*R+LN(2)/2  + N*LN(2)
  			LI		R0, 256*(EXPN-25)
@@ -1705,8 +1682,6 @@ LNK:    WORD 01745H,0D174H,05D81H  ;K1
 ;			 |       X        |
 ;			 |       X        |
 ;			 |       X        |
-;
-;
 ;
 ;     NAME:      PWR
 ;	  VARIABLES: AC = X, AC' = Y
@@ -1817,9 +1792,12 @@ ARCTK:  WORD 09C71H,0C71CH,07281H  ;K1
 ;
 _ccatan::	CALL	@GETCCARG
 
-
+;
+;Not yet implemented
+;
 ARCTAN: 	LI  	R8,ARCTK-6
         	LI   	R4,5
+        	RET
 
 ;COMSER calculates a series of potentials of the form:
 ;T=X*((((X^2+K1)*X^2+K2)....)*X^2+Kn)/Kn,
@@ -1853,7 +1831,7 @@ CALC1:     	CALL 	@FPMUL
         	CALL	@PUSHAC				;Save Z (AC)
 
         	MOV		@CALCS_ADDR,R8
-        	CALL 	@GTNCIX     		;Get the next constant
+			BL	 	@GTNCIX     		;Get the next constant
         	MOV		R8,@CALCS_ADDR
         	CALL 	@FPADD      		;Add to resultant
 
@@ -1866,7 +1844,7 @@ CALC1:     	CALL 	@FPMUL
 
         	CALL	@EXX
         	MOV		@CALCS_ADDR,R8
-         	CALL 	@GETCIX				;Get Kn again for division
+			BL	 	@GETCIX				;Get Kn again for division
         	CALL	@EXX
         	B   	@FPDIV
 
@@ -1880,7 +1858,7 @@ GETCIX: 	MOV		R8,R0
 			MOV		*R0+,R5
         	MOV		*R0+,R6
 			MOV		*R0+,R7
-			RET
+			RT
 ;
 ;Set AC equals 2 * PI.
 ;
@@ -1912,13 +1890,7 @@ EXX:		MOV		R5,R0
 			MOV		R7',R7
 			MOV		R0,R7'
 			RET
-;
-;DUPLICATE EQUIVALENT TO Z80 EX FOR EXCHANGING STATUS REGISTERS
-;
-;EXSR:		STST	R0			;SAVE CURRENT STATUS REGISTER
-;			LST		ST			;LOAD PREVIOUS STATUS REGISTER
-;			MOV		R0,ST		;SAVE CURRENT STATUS REGISTER IN SR
-;			RET
+			RET
 ;
 ;GET FLOATING POINT NUMBER FROM STACK INTO R5', R6' AND R7'
 ;
