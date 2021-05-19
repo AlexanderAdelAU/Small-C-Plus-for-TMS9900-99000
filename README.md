@@ -1,8 +1,10 @@
 # Small C Plus for the TMS9900/TMS99000
 This implementation of Small C plus by  Cain, Van Zandt, Hendrix, Yorston emits code that will run on a TMS9900/TMS99000 
-Single Board Computer with at least 64k Bytes of memory.    This version of Small-C is a major improvement on small C version 2.1
+Single Board Computer with at least 64k Bytes of memory.   This version of Small-C is a major improvement on small C version 2.1
 and includes floating point support as well as structures and unions and other standard C language support that is absent from
 Small C version 2.1
+
+The code produced is can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory or to produce relocatable code that is assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader using he standard REL format.
 
 It is compiled using MingW GCC and therefore operates as a Cross Compiler however the C code is standard C and 
 should be able to self compile with the appropriate OS support on the target computer.  The Eclipse project files are included as a zip file that
