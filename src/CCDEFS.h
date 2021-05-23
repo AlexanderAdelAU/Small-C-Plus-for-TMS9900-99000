@@ -2,6 +2,11 @@
 
 /*	Stand-alone definitions			*/
 
+#define NO		0
+#define YES		1
+
+/*	System wide name size (for symbols)	*/
+
 #define SMALL_C  /*- note this is predefined in the setup_sym()  function */
 
 #ifdef SMALL_C
@@ -17,10 +22,9 @@
 	#define alloc malloc
 #endif
 
-/*	System wide name size (for symbols)	*/
 
 #define	NAMESIZE 12
-#define NAMEMAX  12
+#define NAMEMAX  11
 
 /*	Define the symbol table parameters	*/
 
@@ -39,29 +43,32 @@
 
 SYMBOL {
 	char name[NAMESIZE] ;
-	char ident ;		/* VARIABLE, ARRAY, POINTER, FUNCTION, MACRO */
-	char type ;			/* DOUBLE, CINT, CCHAR, STRUCT */
+	char ident ;		/* VARIABLE, ARRAY, POINTER, FUNCTION, MACRO, LABEL		*/
+	char type ;			/* DOUBLE, CINT, CCHAR, STRUCT							*/
 	char class;			/* EXT, ENT , GLOBAL*/
 	char storage ;		/* STATIK, STKLOC, EXTERNAL */
-	union xx  {			/* offset has a number of interpretations:           */
-		int i ;			/* local symbol:  offset into stack                  */
-						/* struct member: offset into struct                 */
-						/* global symbol: FUNCTION if symbol is declared fn  */
-						/*                or offset into macro table, else 0 */
-		SYMBOL *p ;		/* also used to form linked list of fn args          */
+	union xx  {			/* offset has a number of interpretations:				*/
+		int i ;			/* local symbol:  offset into stack, or label			*/
+						/* struct member: offset into struct					*/
+						/* global symbol: EXTERNAL if symbol not yet defined	*/
+						/*                STATIK if symbol has been defined		*/
+						/*                macro table offset (ident = MACRO)	*/
+						/*                else 0								*/ 
+		SYMBOL *p ;		/* also used to form linked list of fn args				*/
 	} offset ;
 	char more ;			/* index of linked entry in dummy_sym */
 	char tag_idx ;		/* index of struct tag in tag table */
 } ;
 
 #ifdef SMALL_C
-	#define NULL_SYM 0
+#define NULL_SYM 0
 #else
-	#define NULL_SYM (SYMBOL *)0
+#define NULL_SYM (SYMBOL *)0
 #endif
 
 /*	Define possible entries for "ident"	*/
 
+#define LABEL		0
 #define	VARIABLE	1
 #define	ARRAY		2
 #define	POINTER		3
@@ -73,19 +80,21 @@ SYMBOL {
 
 /*	Define possible entries for "type"	*/
 
-#define FLOAT	1
+/*      LABEL	0 */
+#define DOUBLE	1
 #define	CINT	2
 #define	CCHAR	3
 #define STRUCT	4
+#define UNION	5		/* used only in processing, not in symbol table */
 
 /* number of types to which pointers to pointers can be defined */
 #define NTYPE	3
 
 /*	Define possible entries for "storage"	*/
 
-#define	STATIK	1
-#define	STKLOC	2
-#define EXTERNAL 3
+#define	STATIK		1
+#define	STKLOC		2
+#define EXTERNAL	3
 
 /* SYMBOL Class */
 #define	EXT	1
@@ -108,14 +117,14 @@ struct tag_symbol {
 #define TAG_SYMBOL struct tag_symbol
 
 #ifdef SMALL_C
-	#define NULL_TAG 0
+#define NULL_TAG 0
 #else
-	#define NULL_TAG (TAG_SYMBOL *)0
+#define NULL_TAG (TAG_SYMBOL *)0
 #endif
 
 /*	Define the structure member table parameters */
 
-#define NUMMEMB		30
+#define NUMMEMB		45
 #define STARTMEMB	membtab
 #define ENDMEMB		(membtab+NUMMEMB)
 
@@ -132,7 +141,7 @@ struct sw_tab {
 
 /*	Define the "while" statement queue	*/
 
-#define	NUMWHILE	20
+#define	NUMWHILE	15
 #define	WQMAX		wqueue+(NUMWHILE-1)
 
 struct while_tab {
@@ -150,13 +159,13 @@ struct while_tab {
 
 /*	Define the input line			*/
 
-#define	LINESIZE	128
+#define	LINESIZE	256
 #define	LINEMAX		(LINESIZE-1)
 #define	MPMAX		LINEMAX
 
 /*  Output staging buffer size */
 
-#define STAGESIZE	1450
+#define STAGESIZE	3072
 #define STAGELIMIT	(STAGESIZE-1)
 
 /*	Define the macro (define) pool		*/
@@ -178,6 +187,8 @@ struct while_tab {
 #define STSWITCH	10
 #define STCASE		11
 #define STDEF		12
+#define STGOTO		13
+#define STLABEL		14
 
 /* define length of names for assembler */
 

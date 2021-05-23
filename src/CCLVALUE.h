@@ -12,6 +12,7 @@ struct lvalue {
 	int (*binop)() ;		/* function address of highest/last binary operator */
 	char *stage_add ;		/* stage addess of "oper 0" code, else 0 */
 	int val_type ;			/* type of value calculated */
-	int var_type ;			/* 1 if local, 0 otherwise */
-};
+	char storage ;			/* type of storage: STKLOC, STATIK or EXTERNAL */
+} ;
+
 #define LVALUE struct lvalue

@@ -11,13 +11,19 @@
 extern SYMBOL *locptr ;
 extern WHILE_TAB *wqptr ;
 extern int lastst, Zsp, eof ;
-extern int ncmp, declared, trace ;
+extern int ncmp, declared ;
+extern int nogo, noloc ;
+extern int lptr ;
 extern int swdefault, swactive ;
 extern SW_TAB *swnext, *swend ;
-extern char line[] ;
+extern char *line ;
 extern int cmode ;
 extern SYMBOL *currfn ;
 extern FILE *output ;
+
+extern char Hashasm[] ;
+char Notinsw[]	= "not in switch" ;
+char Swhile[]	= "while" ;
 
 /*
  *	Statement parser
@@ -30,7 +36,7 @@ statement()
 {
 	char sname[NAMESIZE] ;
 	TAG_SYMBOL *otag ;
-	int sflag, st ;
+	int sflag, st, ret ;
 
 #ifdef CPM
 	if ( cpm(11,0) & 1 )	/* check for ctrl-C */
@@ -42,40 +48,31 @@ statement()
 	if ( ch()==0 && eof )
 		return (lastst=STEXP) ;
 	else {
-		switch ( ch() ) {
-		case 'c' :
-			if ( amatch("char") ) {
-				declloc(CCHAR, NULL_TAG) ;
-				return lastst ;
-			}
+		sflag = 0 ;
+		switch ( (ret=dotype()) ) {
+		case CCHAR :
+		case CINT :
+		case DOUBLE :
+			declloc(ret, NULL) ;
+			return lastst ;
 			break ;
-		case 'i' :
-			if ( amatch("int") ) {
-				declloc(CINT, NULL_TAG) ;
-				return lastst ;
+		case STRUCT :
+			sflag = 1 ;
+		case UNION :
+			if ( symname(sname) == 0 )
+				illname() ;
+			if ( (otag=findtag(sname)) == 0 ) {
+				/* structure not previously defined */
+				otag = defstruct(sname, STATIK, sflag) ;
 			}
-			break ;
-		case 'd' :
-			if ( amatch("double") ) {
-				declloc(FLOAT, NULL_TAG) ;
-				return lastst ;
-			}
-			break ;
-		case 's' :
-			if ( (sflag=amatch("struct")) || amatch("union") ) {
-				if ( symname(sname) == 0 )
-					illname() ;
-				if ( (otag=findtag(sname)) == 0 ) {
-					/* structure not previously defined */
-					otag = defstruct(sname, STATIK, sflag) ;
-				}
-				declloc(STRUCT, otag) ;
-				return lastst ;
-			}
+			declloc(STRUCT, otag) ;
+			return lastst ;
 			break ;
 		}
 		/* not a definition */
 		if ( declared >= 0 ) {
+			if ( ncmp > 1 )
+				nogo = declared ;		/* disable goto if any */
 			Zsp = modstk(Zsp-declared, NO) ;
 			declared = -1 ;
 		}
@@ -93,7 +90,7 @@ statement()
 			}
 			break ;
 		case 'w' :
-			if ( amatch("while") ) {
+			if ( amatch(Swhile) ) {
 				dowhile() ;
 				st = STWHILE;
 			}
@@ -145,12 +142,18 @@ statement()
 				st = STBREAK ;
 			}
 			break ;
+		case 'g' :
+			if ( amatch("goto") ) {
+				dogoto() ;
+				st = STGOTO ;
+			}
+			break ;
 		case ';' :
 			inbyte() ;
 			st = lastst ;
 			break ;
 		case '#' :
-			if ( match("#asm") ) {
+			if ( match(Hashasm) ) {
 				doasm() ;
 				st = STASM;
 			}
@@ -158,9 +161,15 @@ statement()
 		}
 		if ( st == -1 ) {
 			/* if nothing else, assume it's an expression */
-			doexpr() ;
-			ns() ;
-			st = STEXP ;
+			/* or possibly a label */
+			if ( dolabel() ) {
+				st = STLABEL ;
+			}
+			else {
+				doexpr() ;
+				ns() ;
+				st = STEXP ;
+			}
 		}
 	}
 	return (lastst = st) ;
@@ -184,7 +193,7 @@ ns()
  */
 compound()
 {
-	SYMBOL *savloc ;
+	SYMBOL *savloc, *cptr ;
 	int savcsp ;
 
 	savcsp = Zsp ;
@@ -193,12 +202,45 @@ compound()
 	++ncmp;				/* new level open */
 	while (cmatch('}')==0) statement(); /* do one */
 	--ncmp;				/* close current level */
-	if ( lastst != STRETURN ) {
+	if ( lastst != STRETURN && lastst != STGOTO ) {
 		modstk(savcsp,NO) ;		/* delete local variable space */
 	}
 	Zsp = savcsp ;
+	/* retain labels in local symbol table */
+	cptr = savloc ;
+	while ( cptr < locptr ) {
+		if ( cptr->ident == LABEL ) {
+			strcpy(savloc->name, cptr->name) ;
+			savloc->ident = savloc->type = LABEL ;
+			savloc->offset.i = cptr->offset.i ;
+			savloc->more = savloc->tag_idx = 0 ;
+			++savloc ;
+		}
+		++cptr ;
+	}
 	locptr = savloc ;	/* delete local symbols */
 	declared = -1 ;
+}
+
+/*
+ * check for type specifier
+ */
+dotype()
+{
+	blanks() ;
+	switch ( ch() ) {
+	case 'i' :
+		return amatch("int") ? CINT : 0 ;
+	case 'c' :
+		return amatch("char") ? CCHAR : 0 ;
+	case 's' :
+		return amatch("struct") ? STRUCT : 0 ;
+	case 'u' :
+		return amatch("union") ? UNION : 0 ;
+	case 'd' :
+		return amatch("double") ? DOUBLE : 0 ;
+	}
+	return 0 ;
 }
 
 /*
@@ -218,7 +260,7 @@ doif()
 	}
 	/* an "if...else" statement. */
 	flab2 = getlabel() ;
-	if ( lastst != STRETURN ) {
+	if ( lastst != STRETURN && lastst != STGOTO ) {
 		/* if last statement of 'if' was 'return' we needn't skip 'else' code */
 		jump(flab2);
 	}
@@ -234,11 +276,12 @@ doexpr()
 {
 	char *before, *start ;
 	int type, con, val ;
+
 	while (1) {
-		setstage(&before, &start);
-		type = expression(&con, &val);
+		setstage(&before, &start) ;
+		type = expression(&con, &val) ;
 		clearstage( before, start ) ;
-		if ( ch() != ',' ) return type;
+		if ( ch() != ',' ) return type ;
 		inbyte() ;
 	}
 }
@@ -271,7 +314,7 @@ dodo()
 	addwhile(&wq) ;
 	postlabel(top=getlabel()) ;
 	statement() ;
-	needtoken("while") ;
+	needtoken(Swhile) ;
 	postlabel(wq.loop) ;
 	test(wq.exit, YES) ;
 	jump(top);
@@ -363,7 +406,7 @@ doswitch()
  */
 docase()
 {
-	if (swactive == 0) error("not in switch") ;
+	if (swactive == 0) error(Notinsw) ;
 	if (swnext > swend ) {
 		error("too many cases") ;
 		return ;
@@ -379,9 +422,59 @@ dodefault()
 	if (swactive) {
 		if (swdefault) error("multiple defaults") ;
 	}
-	else error("not in switch") ;
+	else error(Notinsw) ;
 	needchar(':') ;
 	postlabel(swdefault=getlabel()) ;
+}
+
+dogoto()
+{
+	char sname[NAMESIZE] ;
+
+	if ( nogo > 0 )
+		error("not allowed with block-locals") ;
+	else
+		noloc = 1 ;
+	if ( symname(sname) )
+		jump(addlabel(sname)) ;
+	else
+		error("bad label") ;
+	ns() ;
+}
+
+dolabel()
+{
+	char sname[NAMESIZE] ;
+	int savelptr ;
+
+	blanks() ;
+	savelptr = lptr ;
+	if ( symname(sname) ) {
+		if ( gch() == ':' ) {
+			postlabel(addlabel(sname)) ;
+			return 1 ;
+		}
+		else
+			lptr = savelptr ;
+	}
+	return 0 ;
+}
+
+addlabel(sname)
+char *sname ;
+{
+	SYMBOL *cptr ;
+
+	if ( (cptr=findloc(sname)) ) {
+		if ( cptr->ident != LABEL ) {
+			error("not a label") ;
+		}
+		return cptr->offset.i ;
+	}
+	else {
+		cptr = addloc(sname, LABEL, LABEL, 0, 0) ;
+		return cptr->offset.i = getlabel() ;
+	}
 }
 	
 
@@ -412,8 +505,6 @@ doreturn()
 leave(save)
 int save ;
 {
-	if ( trace )
-		callrts("_ccleavi##");
 	modstk(0,save);	/* clean up stk */
 	zret();		/* and exit function */
 }
@@ -461,13 +552,13 @@ doasm()
 		preprocess();	/* get and print lines */
 		if ( match("#endasm") || eof )
 			break ;
-		if ( output != NULL_FD ) {
+		if ( output != NULL ) {
 			if ( fputs(line, output) == -1 ) {
 				fabort() ;
 			}
 		}
 		else {
-			puts(line) ;
+			fputs(line, stdout) ;
 		}
 		nl();
 	}
