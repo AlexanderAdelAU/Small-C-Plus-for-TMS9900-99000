@@ -28,7 +28,7 @@ using Simpson's Rule, is shown below.  This is a very good test of the Floating 
 ```
 /*
  ============================================================================
- Name        : DounbleIntegralSimpsonsRule.c
+ Name        : DoubleIntegralSimpsonsRule.c
  Author      : Alex Cameron
  Version     :
  Copyright   : None
@@ -128,7 +128,7 @@ main() {
  * plot  abs(((cos(pi*cos(x)/2.0)*cos(pi*(1.0-sin(x)*cos(y))/4.0))^2)/sin(x))
  * ===============================================================
  */
-f(x, y)
+double f(x, y)
 double x, y; {
 double zd;
 
