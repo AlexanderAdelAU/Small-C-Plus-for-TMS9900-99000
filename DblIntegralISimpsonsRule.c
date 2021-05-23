@@ -1,6 +1,6 @@
 /*
  ============================================================================
- Name        : DounbleIntegralSimpsonsRule.c
+ Name        : DoubleIntegralSimpsonsRule.c
  Author      : Alex Cameron
  Version     :
  Copyright   : None
@@ -12,7 +12,7 @@
 #include "float.h"
 double fxy[100], fy[12];
 double pi;
-double f(); double g();
+double f();
 
 main() {
 
@@ -100,15 +100,11 @@ main() {
  * plot  abs(((cos(pi*cos(x)/2.0)*cos(pi*(1.0-sin(x)*cos(y))/4.0))^2)/sin(x))
  * ===============================================================
  */
-f(x, y)
+double f(x, y)
 double x, y; {
 double zd;
 
 	zd = cos(pi * cos(x) / 2.0) * cos(pi * (1.0 - sin(x) * cos(y)) / 4.0);
 	zd = pow(zd, 2.0)/sin(x);
 	return (fabs(zd));
-}
-
- g(x,y) double x,y; {
-	return (x*y*y);
 }
