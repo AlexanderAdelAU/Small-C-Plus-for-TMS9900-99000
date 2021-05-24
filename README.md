@@ -1,4 +1,4 @@
-# Small C Plus for the TMS9900/TMS99000 - Version 1.06
+# Small C Compiler for the TMS9900/TMS99000 - Version 1.06
 This implementation of Small C plus by  Cain, Van Zandt, Hendrix, Yorston emits code that will run on a TMS9900/TMS99000 
 Single Board Computer with at least 64k Bytes of memory.   This version of Small-C is a major improvement on small C version 2.1
 and includes floating point support as well as structures and unions and other standard C language support that is absent from
