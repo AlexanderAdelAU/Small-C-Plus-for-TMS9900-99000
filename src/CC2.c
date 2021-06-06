@@ -13,7 +13,7 @@ extern WHILE_TAB *wqptr ;
 extern int lastst, Zsp, eof ;
 extern int ncmp, declared ;
 extern int nogo, noloc ;
-extern int lptr ;
+extern int lptr;
 extern int swdefault, swactive ;
 extern SW_TAB *swnext, *swend ;
 extern char *line ;
@@ -53,6 +53,8 @@ statement()
 		case CCHAR :
 		case CINT :
 		case DOUBLE :
+		case UCCHAR :
+		case UCINT :
 			declloc(ret, NULL) ;
 			return lastst ;
 			break ;
@@ -236,7 +238,19 @@ dotype()
 	case 's' :
 		return amatch("struct") ? STRUCT : 0 ;
 	case 'u' :
-		return amatch("union") ? UNION : 0 ;
+		switch ( nch2()) {
+		case 'i' :
+			return amatch("union") ? UNION : 0 ;
+		case 's' :
+			if (amatch("unsigned")) {
+				blanks();
+				if ( ch() == 'i') if (amatch("int") ) return UCINT;
+				if ( ch() == 'c') if (amatch("char") ) return UCCHAR;
+				return UCINT;
+			}
+		}
+		break;
+
 	case 'd' :
 		return amatch("double") ? DOUBLE : 0 ;
 	}

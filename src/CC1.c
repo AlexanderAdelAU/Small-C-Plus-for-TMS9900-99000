@@ -12,8 +12,12 @@
 
 char Version[] = "          Original Z80 Version 21st April 1990       " ;
 char Target[] = "        TMS9900 Relocatable Version 18th May, 2021 " ;
-char Banner[] =  "* * *  Small-C/Plus Version 1.06 for the TMS 9900  * * *" ;
+char Banner[] =  "* * *  Small-C/Plus Version 1.06a for the TMS 9900  * * *" ;
 char Author[] =  "       Cain, Van Zandt, Hendrix, Yorston, Cameron" ;
+
+/*   1.06  Original port for Z80 1.06 version
+ *   1.06a Added unsigned modifier for char and int
+ *   */
 
 char Fnptrtail[]	= ")()" ;
 char Hashasm[]		= "#asm" ;
@@ -95,7 +99,7 @@ FILE	*input,		/* iob # for input file */
 
 
 #ifdef SMALL_C
-int minavail = 32000 ;		/* minimum memory available */
+int minavail = 48000 ;		/* minimum memory available */
 #endif
 
 SYMBOL	*currfn,	/* ptr to symtab entry for current fn. */
@@ -395,13 +399,13 @@ setup_sym()
 	defmac("CPM") ;
 	defmac("Z80") ;
 	defmac("PCW") ;
-	 defmac("SMALL_C") ;
+	defmac("SMALL_C") ;
 	/* dummy symbols for pointers to char, int, double */
 	/* note that the symbol names are not valid C variables */
 	dummy_sym[0] = 0 ;
 	dummy_sym[CCHAR] = addglb("0ch", POINTER, CCHAR, 0, 0, 0, 0) ;
-	dummy_sym[CINT] = addglb("0int", POINTER, CINT, 0,0, 0, 0) ;
-	dummy_sym[DOUBLE] = addglb("0dbl", POINTER, DOUBLE, 0, 0, 0,0) ;
+	dummy_sym[CINT] = addglb("0int", POINTER, CINT, 0, 0, 0, 0) ;
+	dummy_sym[DOUBLE] = addglb("0dbl", POINTER, DOUBLE, 0, 0, 0, 0) ;
 }
 
 /*
@@ -549,6 +553,8 @@ int s_memb ;			/* TRUE if struct member is being declared, zero for union */
 	case CCHAR :
 	case CINT :
 	case DOUBLE :
+	case UCCHAR :
+	case UCINT :
 		declglb(ret, storage, mtag, NULL, s_memb) ;
 		return 1 ;
 	case STRUCT :
@@ -597,7 +603,7 @@ int s_memb ;
 	/* add dummy symbol */
 	++nam[1] ;
 	itag = ptr - tagtab ;
-	dummy_sym[NTYPE+1+itag] = addglb(nam,POINTER,STRUCT,0,STRUCT,0,0,itag) ;
+	dummy_sym[NTYPE+1+itag] = addglb(nam,POINTER, STRUCT, 0, 0,STRUCT, 0, 0, itag) ;
 
 	needchar('{') ;
 	while ( dodeclare(storage, ptr, s_memb) )
@@ -641,8 +647,8 @@ TAG_SYMBOL *otag ;
  *  makes an entry in the symbol table so subsequent
  *  references can call symbol by name
  */
-declglb(typ,storage, mtag, otag, s_memb)
-int typ ;		/* typ is CCHAR, CINT, DOUBLE, STRUCT */
+declglb(typ, storage, mtag, otag, s_memb)
+int typ ;		/* typ is CCHAR, CINT, UCCHAR, UCINT, DOUBLE, STRUCT */
 int storage;
 TAG_SYMBOL *mtag ;		/* tag of struct whose members are being declared, or zero */
 TAG_SYMBOL *otag ;		/* tag of struct for object being declared */
@@ -656,7 +662,10 @@ int s_memb ;			/* TRUE if struct member being declared, zero if union */
 		if ( endst() ) break;	/* do line */
 
 		type = typ ;
-		size = 1 ;				/* assume 1 element */
+	/*	if (typ == UCCHAR) type = CCHAR;
+		if (typ == UCINT) type = CINT;
+		*/
+		size = 1 ;		 /* assume 1 element  global chars can be single byte in TMS 9900 Architecture */
 		more =					/* assume dummy symbol not required */
 		itag = 0 ;				/* just for tidiness */
 
@@ -731,14 +740,15 @@ int s_memb ;			/* TRUE if struct member being declared, zero if union */
 			}
 			/* We haven't found a previous declaration of this symbol so add it */
 			/* TMS 9900 modify to define relocation variables */
+			/* Note use of typ so unsigned can be determined */
 			else {
-				addglb(sname, ident, type,(storage != EXTERNAL && ident != FUNCTION) ? ENT:EXT,
+				addglb(sname, ident, type, (storage != EXTERNAL && ident != FUNCTION) ? ENT:EXT,
 									(ident == FUNCTION) ? EXTERNAL : storage, more, itag) ;
 			}
 		}
 		else if ( s_memb ) {
 			/* are adding structure member, mtag->size is offset */
-			addmemb(sname, ident, type, 0, mtag->size, storage, more, itag);
+			addmemb(sname, ident, type,  0, mtag->size, storage, more, itag);
 			/* store (correctly scaled) size of member in tag table entry */
 			if ( ident == POINTER) type = CINT ;
 			cscale(type, otag, &size) ;
@@ -746,7 +756,7 @@ int s_memb ;			/* TRUE if struct member being declared, zero if union */
 		}
 		else {
 			/* are adding union member, offset is always zero */
-			addmemb(sname, ident, type, 0, 0, storage, more, itag);
+			addmemb(sname, ident, type,  0, 0, storage, more, itag);
 			/* store maximum member size in tag table entry */
 			if ( ident == POINTER ) type = CINT ;
 			cscale(type, otag, &size) ;
@@ -888,7 +898,7 @@ TAG_SYMBOL *tag ;
 		litptr = 0 ;
 		litlab = getlabel() ;
 		if ( dim == 0 ) dim = -1 ;
-		size = (type == CINT) ? 2 : 1 ;
+		size = (type == CINT || type == UCINT) ? 2 : 1 ;
 
 		if ( cmatch('{') ) {
 			/* aggregate initialiser */
@@ -1166,7 +1176,9 @@ int seen_close ;
 		sflag = 0 ;
 		switch ( (ret=dotype()) ) {
 		case CCHAR :
-		case CINT :
+		case CINT:
+		case UCCHAR :
+		case UCINT :
 		case DOUBLE :
 			getarg(ret, NULL) ;
 			break ;
@@ -1216,7 +1228,7 @@ int seen_close ;
  *	local symbol table for each named argument
  */
 getarg(typ, otag)
-int typ ;			/* typ = CCHAR, CINT, DOUBLE or STRUCT */
+int typ ;			/* typ = CCHAR, CINT, UINT, DOUBLE or STRUCT */
 TAG_SYMBOL *otag ;	/* structure tag for STRUCT type objects */
 {
 	char n[NAMESIZE] ;

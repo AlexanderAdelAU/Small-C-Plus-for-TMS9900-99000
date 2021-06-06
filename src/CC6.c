@@ -53,7 +53,8 @@ header() {
 	ol("\tDXOP POP,9");
 	ol("\tDXOP WHEX,10");
 	ol("\tDXOP WRITE,12    ;WRITE CHAR IN MSB ");
-	ol("\tDXOP DEBUG,15    ;TRACE THE PRECEDING INSTRUCTION, PC,ST and REGISTERS ");
+	ol(
+			"\tDXOP DEBUG,15    ;TRACE THE PRECEDING INSTRUCTION, PC,ST and REGISTERS ");
 	nl();
 	ol(";-------- START MODULE -----------");
 	/*	if ( trace ) {
@@ -62,11 +63,11 @@ header() {
 	/*	} */
 
 	if (mainflg) { /* do stuff needed for first */
-		 /* set default drive for CP/M */
+		/* set default drive for CP/M */
 
 		/* FREEMEM is setup by the SHELL */
 		/* WP used to in some offset instructions  */
-		 ol("\tSTWP WP ");
+		ol("\tSTWP WP ");
 		/* Branch is used because IOLIB will vector back to "main" */
 		ol("\tB @_main## ; This calls iolib99 entry point");
 
@@ -79,6 +80,7 @@ header() {
 		else
 			outstr(Filename);
 		nl();
+		ol("\tNOP; Required to terminate link chain with non zero for global variables");
 	}
 }
 
@@ -110,8 +112,8 @@ outname(sname)
 	char *sname; {
 	int i;
 
-	if((sname[1] == '\0') ) {
-		outbyte('q');	/* helps make variables unique that are short in length */
+	if ((sname[1] == '\0')) {
+		outbyte('q'); /* helps make variables unique that are short in length */
 		outbyte('_');
 	}
 	if (strlen(sname) > ASMLEN) {
@@ -159,7 +161,7 @@ getloc(sym, off)
 
 	if (sym->type == CCHAR && sym->ident != POINTER) {
 		ol(";Char offset");
-		offset += 1;   			/* [AC-9900] Need to offset as CCHAR takes two bytes on the stack */
+		offset += 1; /* [AC-9900] Need to offset as CCHAR takes two bytes on the stack */
 	}
 	if (offset) {
 		ot("\tLI  R4,");
@@ -181,7 +183,7 @@ putmem(sym)
 		fpcall("_fstore##");
 	} else {
 		if (sym->ident != POINTER && sym->type == CCHAR) {
-			ot("\tMOVB @2*R4+1(WP),@"); 			/* CHARs are stored as LSB of a 16 bit word */
+			ot("\tMOVB @2*R4+1(WP),@"); /* CHARs are stored as LSB of a 16 bit word */
 			outname(sym->name);
 			nl();
 		} else {
@@ -193,16 +195,15 @@ putmem(sym)
 }
 
 /* Store the specified object type in the primary register
-*	at the address on the top of the stack  - because it is on the stack
-*  the char must be stored as a word  i.e. in the LSB.
-*
-*  WP is loaded at the start of the programme to point to the current workspace
-*
-*/
+ *	at the address on the top of the stack  - because it is on the stack
+ *  the char must be stored as a word  i.e. in the LSB.
+ *
+ *  WP is loaded at the start of the programme to point to the current workspace
+ *
+ */
 
 putstk(typeobj)
- char typeobj;
-{
+	char typeobj; {
 	switch (typeobj) {
 	case DOUBLE:
 		mainpop();
@@ -223,7 +224,7 @@ putstk(typeobj)
 /* store a two byte object in the primary register at TOS */
 puttos() {
 	ol(";puttos()");
-/*	ol("\tMOV *SP,R2"); /* Probably redundant and not needed */
+	/*	ol("\tMOV *SP,R2"); /* Probably redundant and not needed */
 	ol("\tMOV R4,*SP");
 }
 
@@ -234,7 +235,6 @@ put2tos() {
 	/*	ol("\tMOV @2(SP),R2"); /* Probably redundant and not needed */
 	ol("\tMOV R4,@2(SP)");
 }
-
 
 /*
  * loadargc - load accumulator with number of args
@@ -247,7 +247,7 @@ loadargc(n)
 	ot("\tLI R1,");
 	outdec(n >> 1);
 	nl();
-	callrts("_setargc##");	/* set the argcnt in iolib99 so it can be reused */
+	callrts("_setargc##"); /* set the argcnt in iolib99 so it can be reused */
 
 }
 
@@ -266,9 +266,9 @@ loadargc(n)
  *
  */
 
-indirect( typeobj)
-char typeobj; {
-	switch ( typeobj) {
+indirect(typeobj)
+	char typeobj; {
+	switch (typeobj) {
 	case CCHAR: /* Fetch a single character from the address in R4 and extend it to lower byte*/
 		ol(";indirect ccgchar");
 		ol("\tMOVB *R4,R4");
@@ -405,7 +405,6 @@ zcall(sname)
  */
 callrts(sname)
 	char *sname; {
-	ol(";callrts()");
 	ot("\tBL @");
 	outstr(sname);
 	nl();
@@ -452,9 +451,17 @@ jump(label)
 /* Test the primary register and jump if false to label */
 testjump(label)
 	int label; {
-	ol(";testjump()");
 	ol("\tMOV R4,R4");
 	ol("\tJNE $+6");
+	ot("\tB @");
+	printlabel(label);
+	nl();
+}
+
+/* Test the primary register and jump if false to label */
+testjump2(label)
+	int label; {
+	ol(";testjump()");
 	ot("\tB @");
 	printlabel(label);
 	nl();
@@ -772,8 +779,9 @@ dect() {
 /* and put a literal 1 in the primary if the condition is */
 /* true, otherwise they clear the primary register */
 
-/* Test for equal */
+/* Test for equal   TEST IF R4 = R3 */
 zeq() {
+	ol(";_cceq");
 	callrts("_cceq##");
 }
 
@@ -783,18 +791,26 @@ eq0(label)
 	ol(";eq0(label)");
 	ol("\tMOV R4,R4");
 	ol("\tJEQ $+6");
-	ot("\tB @");			/* Branch if not equal */
+	ot("\tB @"); /* Branch if not equal */
 	printlabel(label);
 	nl();
 }
 
-/* Test for not equal */
+/* Test for not equal
+ *
+ * TEST IF R3 != R4
+ * */
 zne() {
+	ol(";_ccne");
 	callrts("_ccne##");
 }
 
-/* Test for less than (signed) */
+/* Test for less than (signed)
+ *
+ * TEST IF R3 < R4 (SIGNED)
+ * */
 zlt() {
+	ol(";_cclt");
 	callrts("_cclt##");
 }
 
@@ -805,13 +821,15 @@ lt0(label)
 	ol("\tMOV R4,R4");
 	ol("\tJLT $+6");
 	ot("\tB @");
-	printlabel(label);   /* Branch if positive */
+	printlabel(label); /* Branch if positive */
 	nl();
 }
 
-
-/* Test for less than or equal to (signed) */
+/* Test for less than or equal to (signed)
+ * TEST IF R3 <= R4 (SIGNED)
+ */
 zle() {
+	ol(";_ccle");
 	callrts("_ccle##");
 }
 
@@ -828,20 +846,23 @@ le0(label)
 }
 
 /* Test for less than or equal to zero
-le0(label)
-	int label; {
-	ol(";le0(label)");
-	ol("\tMOV R4,R4");
-	ol("\tJEQ $+8");
-	ol("\tJLT $+6");
-	ot("\tB @");		/* Branch if positive
-	printlabel(label);
-	nl();
-}*/
+ le0(label)
+ int label; {
+ ol(";le0(label)");
+ ol("\tMOV R4,R4");
+ ol("\tJEQ $+8");
+ ol("\tJLT $+6");
+ ot("\tB @");		/* Branch if positive
+ printlabel(label);
+ nl();
+ }*/
 
-
-/* Test for greater than (signed) */
+/* Test for greater than (signed)
+ *
+ * TEST IF R3 > R4  (SIGNED)
+ * */
 zgt() {
+	ol(";_ccgt");
 	callrts("_ccgt##");
 }
 
@@ -850,15 +871,18 @@ gt0(label)
 	int label; {
 	ol(";gt0(label)");
 	ol("\tMOV R4,R4");
-	ol("\tJGT $+6");		/* Jump is A >   */
-	ot("\tB @");			/* Branch if zero or less than  */
+	ol("\tJGT $+6"); /* Jump is A >   */
+	ot("\tB @"); /* Branch if zero or less than  */
 	printlabel(label);
 	nl();
 }
 
-
-/* Test for greater than or equal to (signed) */
+/* Test for greater than or equal to (signed)
+ *
+ * TEST IF R3 >= R4 (SIGNED)
+ * */
 zge() {
+	ol(";_ccge");
 	callrts("_ccge##");
 }
 
@@ -870,27 +894,48 @@ ge0(label)
 	ol("\tJEQ  $+8");
 	ol("\tJGT  $+6");
 	ot("\tB @");
-	printlabel(label);			/* Jump if sign bit set */
+	printlabel(label); /* Jump if sign bit set */
 	nl();
 }
 
-/* Test for less than (unsigned) */
+/* Test for less than (unsigned)
+ * Note: these are optimised through the peephole in most cases
+ * result in a single compare operation.
+ *
+ * TEST IF R3 < R4 (UNSIGNED)
+ *
+ */
 ult() {
+	ol(";_ccult");
 	callrts("_ccult##");
 }
 
-/* Test for less than or equal to (unsigned) */
+/* Test for less than or equal to (unsigned)
+ *
+ * TEST IF R3 <= R4 (UNSIGNED)
+
+ */
 ule() {
+	ol(";_ccule");
 	callrts("_ccule##");
 }
 
-/* Test for greater than (unsigned) */
+/* Test for greater than (unsigned)
+ *
+ * TEST IF R3 > R4 (UNSIGNED)
+ *
+ */
 ugt() {
+	ol(";_ccugt");
 	callrts("_ccugt##");
 }
 
-/* Test for greater than or equal to (unsigned) */
+/* Test for greater than or equal to (unsigned)
+ *
+ *  TEST IF R3 > R4 (UNSIGNED)
+ */
 uge() {
+	ol(";_ccuge");
 	callrts("_ccuge##");
 }
 
@@ -962,8 +1007,85 @@ entry(name)
 peephole(ptr, output)
 	char *ptr;int output; {
 	char *tptr;
-	return 0; /* disable until code  generation is finalised */
+
 	while (*ptr) {
+		/* The unsigned compare optimisation reduces code by 4 bytes
+		 * and removes a BL operation
+		 */
+
+		if (streq(ptr, "\tBL @_ccuge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJHE $+6\n");
+			ptr += 34;
+			continue;
+		}
+		if (streq(ptr, "\tBL @_ccult##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJL $+6\n");
+			ptr += 34;
+			continue;
+		}
+		if (streq(ptr, "\tBL @_ccugt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJH $+6\n");
+			ptr += 34;
+			continue;
+		}
+		if (streq(ptr, "\tBL @_ccule##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJLE $+6\n");
+			ptr += 34;
+			continue;
+		}
+		/*TEST IF R3 = R4*/
+		if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJEQ $+6\n");
+			ptr += 33;
+			continue;
+		}
+		/*  TEST IF R3 != R4 */
+		if (streq(ptr, "\tBL @_ccne##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJNE $+6\n");
+			ptr += 33;
+			continue;
+		}
+		/*TEST IF R3 > R4  (SIGNED)*/
+		if (streq(ptr, "\tBL @_ccgt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJGT $+6\n");
+			ptr += 33;
+			continue;
+		}
+
+		/*TEST IF R3 < R4  (SIGNED)*/
+		if (streq(ptr, "\tBL @_cclt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R3,R4\n");
+			ot("\tJLT $+6\n");
+			ptr += 33;
+			continue;
+		}
+		/* TEST IF R3 <= R4 (SIGNED) */
+		if (streq(ptr, "\tBL @_ccle##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R4,R3\n");
+			ot("\tJGT $+6\n");
+			ptr += 33;
+			continue;
+		}
+		/*TEST IF R3 >= R4 (SIGNED)*/
+		if (streq(ptr, "\tBL @_ccge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+			ot("\tC R4,R3\n");
+			ot("\tJLT $+6\n");
+			ptr += 33;
+			continue;
+		}
+
+		else
+			cout(*ptr++, output);
+		continue;
+
+
 		if (streq(ptr, "\tLI R4,")) {
 			tptr = ptr + 7;
 			while (*tptr != '\n')
@@ -1043,11 +1165,12 @@ peephole(ptr, output)
 		}
 		if (streq(ptr, "\tMOV *SP+,R3\n\tA R3,R4")) {
 			ol("\tA *SP+,R4; optimised 6");
-			ptr = ptr + 22;
+			ptr += 22;
 		} else
 			cout(*ptr++, output);
 	}
 }
+
 cout(c, fd)
 	char c;int fd; {
 	if (fputc(c, fd) == -1) {

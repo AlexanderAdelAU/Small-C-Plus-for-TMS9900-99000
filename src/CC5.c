@@ -51,6 +51,7 @@ LVALUE *lval;
 				experr() ;
 				return 0 ;
 			}
+			if (ptr->modifier == UNSGND) lval->is_unsigned = 1;
 			getloc(ptr, 0);
 			lval->symbol = ptr;
 			lval->val_type = lval->indirect = ptr->type;
@@ -60,7 +61,7 @@ LVALUE *lval;
 			if ( ptr->ident == POINTER ) {
 				lval->indirect = CINT ;
 				lval->ptr_type = ptr->type ;
-				lval->val_type = CINT ;
+					lval->val_type = CINT ;
 			}
 			if ( ptr->ident == ARRAY ||
 						(ptr->ident == VARIABLE && ptr->type == STRUCT) ) {
@@ -76,6 +77,7 @@ LVALUE *lval;
 				lval->indirect = 0 ;
 				lval->val_type = ptr->type ;
 				lval->storage = STATIK ;
+				if (ptr->modifier == UNSGND) lval->is_unsigned = 1;
 				if ( ptr->type == STRUCT )
 					lval->tagsym = tagtab + ptr->tag_idx ;
 				if ( ptr->ident != ARRAY &&
@@ -98,7 +100,7 @@ LVALUE *lval;
 			/* NB ptr->offset.i is set to EXTERNAL */
 		/*	ptr = addglb(sname,FUNCTION,CINT,EXTERNAL,0,0); */
 			/* NB value set to 0 and declare as class External EXT*/
-			ptr = addglb(sname, FUNCTION, CINT, EXT, 0,EXTERNAL, 0, 0);
+			ptr = addglb(sname, FUNCTION, CINT, EXT,EXTERNAL, 0, 0);
 		}
 		lval->symbol = ptr ;
 		lval->indirect = 0 ;
@@ -475,6 +477,7 @@ int *val ;
 {
 	switch ( type ) {
 	case CINT:
+	case UCINT:
 		*val <<= 1 ;
 		break ;
 	case DOUBLE:
@@ -830,9 +833,11 @@ LVALUE *lval ;
 			error("unknown struct") ;
 		break ;
 	case CINT :
+	case UCINT :
 		sz = 2 ;
 		break ;
 	case CCHAR :
+	case UCCHAR :
 		sz = 2; /* TMS 9900 needs to be 2 for TMS 9900 */
 		break ;
 	case DOUBLE :

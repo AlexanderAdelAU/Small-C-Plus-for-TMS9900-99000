@@ -225,6 +225,7 @@ char Overflow[] = "symbol table overflow";
 SYMBOL * addglb(sname, id, typ, class, value, more, itag)
 char *sname, id, typ, class ;
 int value, more, itag;
+
 {
 	char *sname2, c;
 	if ( findglb(sname) ) {
@@ -247,7 +248,8 @@ int value, more, itag;
 }
 
 SYMBOL* addloc(sname, id, typ, more, itag)
-	char *sname, id, typ;int more, itag; {
+	char *sname, id, typ;
+	int more, itag; {
 	SYMBOL *cptr;
 
 	if (cptr = findloc(sname)) {
@@ -287,9 +289,13 @@ SYMBOL *ptr ;
 char *sname, id, typ, class ;
 int more, itag ;
 {
+	char mtyp;
 	strcpy(ptr->name, sname) ;
 	ptr->ident = id ;
-	ptr->type = typ ;
+	ptr->modifier = (typ == UCCHAR || typ == UCINT) ? UNSGND: 0;
+	ptr-> type = typ;
+	if (typ == UCCHAR) ptr-> type = CCHAR;
+	if (typ == UCINT) ptr-> type = CINT;
 	ptr->class = class ;
 	ptr->more = more ;
 	ptr->tag_idx = itag ;
@@ -444,6 +450,12 @@ ch() {
 nch() {
 	if (ch())
 		return line[lptr + 1];
+	return 0;
+}
+
+nch2() {
+	if (ch())
+		return line[lptr + 2];
 	return 0;
 }
 
@@ -609,7 +621,7 @@ preprocess() {
 			}
 			gch();
 			keepch('"');
-		} else if (ch() == 39) {
+		} else if (ch() == 39) {  /* Single quote, apostrophe */
 			keepch(39);
 			gch();
 			while (ch() != 39 || (line[lptr - 1] == 92 && line[lptr - 2] != 92)) {
@@ -661,7 +673,7 @@ preprocess() {
 		} else
 			keepch(gch());
 	}
-	keepch(0);
+	keepch(0);  /* terminate with null */
 	if (mptr >= MPMAX)
 		error("line too long");
 	/* move expanded line (mline) into parse line (line) */
@@ -760,7 +772,11 @@ clearstage(before, start)
 	*stagenext = 0;
 	if (stagenext = before)
 		return;
+
 	if (start) {
+#ifdef OPTIMIZE
+		peephole(start, output);
+#else
 		if (output != NULL) {
 			if (fputs(start, output) == -1) {
 				fabort();
@@ -768,6 +784,7 @@ clearstage(before, start)
 		} else {
 			fputs(start, stdout);
 		}
+#endif
 	}
 }
 
@@ -934,8 +951,8 @@ streq(str1, str2)
 }
 
 /*
- * compare strings
- * match only if we reach end of both strings or if, at end of one of the
+ * Compare strings.
+ * Match only if we reach end of both strings or if, at end of one of the
  * strings, the other one has reached a non-alphanumeric character
  * (so that, for example, astreq("if", "ifline") is not a match)
  */
