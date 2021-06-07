@@ -1068,15 +1068,18 @@ peephole(ptr, output)
 		}
 		/* TEST IF R3 <= R4 (SIGNED) */
 		if (streq(ptr, "\tBL @_ccle##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R4,R3\n");
-			ot("\tJGT $+6\n");
+			ot("\tC R3,R4\n");
+			ot("\tJLT $+8\n");
+			ot("\tJEQ $+6\n");
 			ptr += 33;
 			continue;
 		}
+
 		/*TEST IF R3 >= R4 (SIGNED)*/
 		if (streq(ptr, "\tBL @_ccge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
 			ot("\tC R4,R3\n");
-			ot("\tJLT $+6\n");
+			ot("\tJLT $+8\n");
+			ot("\tJEQ $+6\n");
 			ptr += 33;
 			continue;
 		}
