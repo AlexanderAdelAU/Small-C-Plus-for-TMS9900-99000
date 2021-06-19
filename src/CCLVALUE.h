@@ -13,6 +13,7 @@ struct lvalue {
 	char *stage_add ;		/* stage addess of "oper 0" code, else 0 */
 	int val_type ;			/* type of value calculated */
 	char storage ;			/* type of storage: STKLOC, STATIK or EXTERNAL */
+	int is_unsigned ;			/* type of storage: STKLOC, STATIK or EXTERNAL */
 } ;
 
 #define LVALUE struct lvalue

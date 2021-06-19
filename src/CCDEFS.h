@@ -46,6 +46,7 @@ SYMBOL {
 	char ident ;		/* VARIABLE, ARRAY, POINTER, FUNCTION, MACRO, LABEL		*/
 	char type ;			/* DOUBLE, CINT, CCHAR, STRUCT							*/
 	char class;			/* EXT, ENT , GLOBAL*/
+	char modifier ;		/* UNSIGNED												*/
 	char storage ;		/* STATIK, STKLOC, EXTERNAL */
 	union xx  {			/* offset has a number of interpretations:				*/
 		int i ;			/* local symbol:  offset into stack, or label			*/
@@ -86,6 +87,12 @@ SYMBOL {
 #define	CCHAR	3
 #define STRUCT	4
 #define UNION	5		/* used only in processing, not in symbol table */
+#define UCCHAR	6		/* Unsigned CHAR */
+#define UCINT	7		/* Unsigned INT */
+
+
+/*	Define possible modifier for "type"	*/
+#define UNSGND	1
 
 /* number of types to which pointers to pointers can be defined */
 #define NTYPE	3
@@ -116,6 +123,7 @@ struct tag_symbol {
 
 #define TAG_SYMBOL struct tag_symbol
 
+#define OPTIMIZE
 #ifdef SMALL_C
 #define NULL_TAG 0
 #else
