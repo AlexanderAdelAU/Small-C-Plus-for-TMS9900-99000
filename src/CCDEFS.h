@@ -123,7 +123,7 @@ struct tag_symbol {
 
 #define TAG_SYMBOL struct tag_symbol
 
-#define OPTIMIZE
+/* #define OPTIMIZE */
 #ifdef SMALL_C
 #define NULL_TAG 0
 #else
