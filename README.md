@@ -1,5 +1,5 @@
 # Small C Compiler for the TMS9900/TMS99000 - Version 1.06a
-I have implemented a TMS9900/TMS99000version of the Small C plus by  Cain, Van Zandt, Hendrix, Yorston verison emits code that will run on a TMS9900/TMS99000 
+I have implemented new version of the Small C plus by  Cain, Van Zandt, Hendrix, Yorston verison emits code that will run on a TMS9900/TMS99000 
 Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement on small C version 2.1 and includes unsigned integers and chars, floating point support, as well as structures and unions and other standard C language support that is absent from Small C version 2.1.  Indeed it compiles and runs the VT100 (https://ttssh2.osdn.jp/index.html.en) screen editor ED2 https://github.com/mdlougheed/ed2  without difficulty.
 
 The code produced is can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory or to produce relocatable code that is assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader using he standard REL format.
