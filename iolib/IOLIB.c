@@ -33,14 +33,15 @@
 #define BUFLGH (LGH+36)
 /*	includes fcb associated with buffer */
 
-#define MFREE 11387
-#define MREAD 22489
-#define MWRITE 17325
-#define DIR         /* compile directory option */
-#define CMDBUF 0xA0	/* location 160 is a pointer to command line */
-#define CMDSIZ 0xA2	/* location 160 is a pointer to command line */
-#define INTBUF 0xA4    /* Internal Buffer pointer address (00A4H( */
-#define FREEMEM 0xA6    /* Internal Buffer pointer address (00A6H( */
+#define MFREE 		11387
+#define MREAD 		22489
+#define MWRITE 		17325
+#define DIR					/* compile directory option */
+#define CMDBUF		0xA0			/* location 160 is a pointer to command line */
+#define CMDSIZ		0xA2			/* location 162 is size of command line */
+#define INTBUF		0xA4			/* Internal Buffer pointer address  */
+#define FREEMEM		0xA6		/* Pointer to Free Memory */
+#define MEMLIMIT 	0xA8		/* Pointer to Memory Limt */
 
 /*int dummy = 0; */
 int _argc; /* # arguments on command line */
