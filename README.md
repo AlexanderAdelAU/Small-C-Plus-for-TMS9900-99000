@@ -92,7 +92,7 @@ main() {
 	 */
 
 	for (j = 0; j <= nosy; j++) {
-		of = fxy[1 + j*nosy];
+		of = fxy[1 + j*nosx];
 		ef = 0.0;
 		for (i = 2; i <= nosx - 2; i += 2) {
 			ef += fxy[i + j*nosx];
