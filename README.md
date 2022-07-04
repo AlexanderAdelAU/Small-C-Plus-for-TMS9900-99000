@@ -80,7 +80,7 @@ main() {
 		y = j * hy + lly;
 		for (i = 0; i <= nosx; i++) {
 			x = i * hx + llx;
-			fxy[i+j*nosy] = f(x, y);
+			fxy[i+j*nosx] = f(x, y);
 		}
 	}
 	/*
@@ -95,10 +95,10 @@ main() {
 		of = fxy[1 + j*nosy];
 		ef = 0.0;
 		for (i = 2; i <= nosx - 2; i += 2) {
-			ef += fxy[i + j*nosy];
-			of += fxy[i + 1 + j*nosy];
+			ef += fxy[i + j*nosx];
+			of += fxy[i + 1 + j*nosx];
 		}
-		fy[j] = fxy[0 + j*nosy] + fxy[nosx + j*nosy] + 2.0 * ef + 4.0 * of;
+		fy[j] = fxy[0 + j*nosy] + fxy[nosx + j*nosx] + 2.0 * ef + 4.0 * of;
 
 	}
 
