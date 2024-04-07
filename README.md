@@ -16,11 +16,11 @@ A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz 
 
 A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below and is compiled using the following syntax:
 
-...
-smallcp DoubleIntegralSimpsonsRule
-...
+```
+	smallcp -C DoubleIntegralSimpsonsRule
+```
 
-The programme performs a doublt integration on the following mathemtical function"
+The programme performs a double integration on the following mathemtical function"
 
 ```
 	zd = cos(pi * cos(x) / 2.0) * cos(pi * (1.0 - sin(x) * cos(y)) / 4.0);
