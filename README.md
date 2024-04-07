@@ -14,7 +14,13 @@ An IOLIB is included that supports CP/M compatible (BDOS in this respository) op
 
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
 
-A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below.   The following is the function to be calculated:
+A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below and is compiled using the following syntax:
+
+...
+smallcp DoubleIntegralSimpsonsRule
+...
+
+The programme performs a doublt integration on the following mathemtical function"
 
 ```
 	zd = cos(pi * cos(x) / 2.0) * cos(pi * (1.0 - sin(x) * cos(y)) / 4.0);
