@@ -156,6 +156,6 @@ Double integration parameters:
  Step size hx and hy:    0.314159,  0.785398
  Number of steps (x,y): 10,8
 
-Result =   3.829042
+Result =   3.827845
 %
 ```
