@@ -9,8 +9,12 @@ A screen capture of ED2 running on a SBC (https://github.com/AlexanderAdelAU/TMS
 </div>
 
 
-The source for the BDOS, and IO libraries are included on this site.
-
+The source for the BDOS, and IO libraries are included on this site and is built using the following commands:
+  ```	
+   smallcp -C src/ED2
+   R99 src/ED2 SCHCLC
+   link99  -M -S src/ED2 iolib99.LIB clib99.LIB.
+```
 ## Floating Point Library
 The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
 
