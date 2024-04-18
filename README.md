@@ -1,10 +1,15 @@
 # Small C Plus Compiler for the TMS9900/TMS99000 - Version 1.06a
 I have implemented new version of the Small C plus by  Cain, Van Zandt, Hendrix, Yorston version that emits code that will run on a TMS9900/TMS99000 
-Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement on small C version 2.1 and includes unsigned integers, chars, floating point support, as well as structures and unions and other standard C language support that is absent from Small C version 2.1.  Indeed it compiles and runs the VT100 (https://ttssh2.osdn.jp/index.html.en) screen editor ED2 https://github.com/mdlougheed/ed2  without difficulty.  A screen capture is shown here:
+Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement on small C version 2.1 and includes unsigned integers, chars, floating point support, as well as structures and unions and other standard C language support that is absent from Small C version 2.1.  Indeed it compiles and runs the VT100 (https://ttssh2.osdn.jp/index.html.en) screen editor ED2 https://github.com/mdlougheed/ed2  without difficulty. 
+
+A screen capture of ED2 running on a SBC (https://github.com/AlexanderAdelAU/TMS9900-SBC) is shown here:
 
 <div style="text-align:center;">
     <img src="images/Ed2.png" alt="Screen capture" width="600">
 </div>
+
+
+The source for the BDOS, and IO libraries are included on this site.
 
 # Floating Point Library
 The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
