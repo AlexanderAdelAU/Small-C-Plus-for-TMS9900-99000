@@ -2,8 +2,11 @@
 I have implemented new version of the Small C plus by  Cain, Van Zandt, Hendrix, Yorston version that emits code that will run on a TMS9900/TMS99000 
 Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement on small C version 2.1 and includes unsigned integers, chars, floating point support, as well as structures and unions and other standard C language support that is absent from Small C version 2.1.  Indeed it compiles and runs the VT100 (https://ttssh2.osdn.jp/index.html.en) screen editor ED2 https://github.com/mdlougheed/ed2  without difficulty.  A screen capture is shown here:
 
- <img src="images/ed2.png" alt="Screen capture" width="400" >
+<div style="text-align:center;">
+    <img src="images/Ed2.png" alt="Screen capture" width="600">
+</div>
 
+# Floating Point Library
 The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
 
 The code produced can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory.  If it needs to be linked to other runtime libraries then it will produce relocatable assembly code that can be assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader (Link99).  The relocatable applications use the standard REL format.
