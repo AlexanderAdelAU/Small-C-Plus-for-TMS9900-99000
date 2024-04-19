@@ -9,7 +9,7 @@ A screen capture of ED2 running on a SBC (https://github.com/AlexanderAdelAU/TMS
 </div>
 
 
-The source for the BDOS, and IO libraries are included on this site and is built using the following commands:
+The source for the BDOS, and IO libraries that are required to run ED2 are included on this site and is built using the following commands:
   ```	
    smallcp -C src/ED2
    R99 src/ED2 SCHCLC
