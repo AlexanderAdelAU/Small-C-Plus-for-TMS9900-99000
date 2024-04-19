@@ -43,7 +43,6 @@ del *.N$
 REM Make the library
 lib99 -U clib99 printf2 itod itou utoi xtoi itox 
 lib99 -U strlib99 strcpy
-lib99 -U fplib99 float 
 del *.R99
 
 
