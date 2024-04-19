@@ -15,18 +15,18 @@ The source for the BDOS, and IO libraries are included on this site and is built
    R99 src/ED2 SCHCLC
    link99  -M -S src/ED2 iolib99.LIB clib99.LIB.
 ```
-## Floating Point Library
-The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
-
-The code produced can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory.  If it needs to be linked to other runtime libraries then it will produce relocatable assembly code that can be assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader (Link99).  The relocatable applications use the standard REL format.
+The code produced by the Small C compiler can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory.  If it needs to be linked to other runtime libraries then it will produce relocatable assembly code that can be assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader (Link99).  The relocatable applications use the standard REL format.
 
 It is compiled using MingW GCC and therefore operates as a Cross Compiler however the C code is standard C and 
 should be able to self compile with the appropriate OS support on the target computer.  The Eclipse project files are included as a zip file that
 may help building and testing the compiler in your own environment.
 
-An IOLIB is included that supports CP/M compatible (BDOS in this respository) operating system calls and a core set of 40bit floating point library routines.  The core set includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP, SQRT.   Other functions such as trancedentals will be added later.  The TMS9900 Floating Point Library filename is CFLOAT48.A99 and was ported from a Z80 Floating Point library.
-
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
+
+## Floating Point Library
+The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
+
+An IOLIB is included that supports CP/M compatible (BDOS in this respository) operating system calls and a core set of 40bit floating point library routines.  The core set includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP, SQRT.   Other functions such as trancedentals will be added later.  The TMS9900 Floating Point Library filename is CFLOAT48.A99 and was ported from a Z80 Floating Point library.
 
 A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below and is compiled using the following syntax:
 
