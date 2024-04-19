@@ -15,7 +15,7 @@ The source for the BDOS, and IO libraries that are required to run ED2 are inclu
    R99 src/ED2 SCHCLC
    link99  -M -S src/ED2 iolib99.LIB clib99.LIB.
 ```
-The code produced by the Small C compiler can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory.  If it needs to be linked to other runtime libraries then it will produce relocatable assembly code that can be assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader (Link99).  The relocatable applications use the standard REL format.
+The code produced by the Small C compiler can be either compiled to produce standalone code (using the -M) flag and assembled using the A99 assembler to run at an absolute location in memory.  If it needs to be linked to other runtime libraries then it will produce relocatable assembly code (using the -C flag) that can be assembled and linked with other modules using the R99 (Relocatable assembler) assembler in conjuction with the linker loader (Link99).  The relocatable applications use the standard REL format.
 
 It is compiled using MingW GCC and therefore operates as a Cross Compiler however the C code is standard C and 
 should be able to self compile with the appropriate OS support on the target computer.  The Eclipse project files are included as a zip file that
