@@ -561,15 +561,15 @@ docont()
  */
 doasm()
 {
-	char *lineptr;			/* 1.10 Fix mismatch in array and pointer declaration */
+	char *lineptr;			/* 1.06a Fix mismatch in array and pointer declaration */
 	cmode=0;			/* mark mode as "asm" */
 	while (1) {
 		preprocess();	/* get and print lines */
 		if ( match("#endasm") || eof )
 			break ;
 		if ( output != NULL ) {
-			lineptr = &line;	/* 1.10 Fix mismatch in array and pointer declaration */
-			if ( fputs(lineptr, output) == -1 ) {	/* 1.10 Fix mismatch in array and pointer declaration */
+			lineptr = &line;	/* 1.06a Fix mismatch in array and pointer declaration */
+			if ( fputs(lineptr, output) == -1 ) {	/* 1.06a Fix mismatch in array and pointer declaration */
 				fabort() ;
 			}
 		}
