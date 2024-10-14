@@ -744,7 +744,7 @@ defmac(text)
 	char *p;
 
 	/* copy macro name into line buffer */
-	p = &line;
+	p = line;		/* Point to the first element in the array -  not &line */
 	while (*text != '=' && *text) {
 		*p++ = *text++;
 	}
