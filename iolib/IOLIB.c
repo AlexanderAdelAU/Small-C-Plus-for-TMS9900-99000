@@ -33,21 +33,23 @@
 #define BUFLGH (LGH+36)
 /*	includes fcb associated with buffer */
 
-#define MFREE 		11387
-#define MREAD 		22489
-#define MWRITE 		17325
-#define DIR					/* compile directory option */
-#define CMDBUF		0xA0			/* location 160 is a pointer to command line */
-#define CMDSIZ		0xA2			/* location 162 is size of command line */
-#define INTBUF		0xA4			/* Internal Buffer pointer address  */
-#define FREEMEM		0xA6		/* Pointer to Free Memory */
-#define MEMLIMIT 	0xA8		/* Pointer to Memory Limt */
+#define MFREE 11387
+#define MREAD 22489
+#define MWRITE 17325
+#define DIR         /* compile directory option */
+#define CMDBUF 0xA0	/* location 160 is a pointer to command line */
+#define CMDSIZ 0xA2	/* location 160 is a pointer to command line */
+#define INTBUF 0xA4    /* Internal Buffer pointer address (00A4H( */
+#define FREEMEM 0xA6    /* Internal Buffer pointer address (00A6H( */
+#define MEMLIMIT 0xB0	/* Memory limit */
 
 /*int dummy = 0; */
 int _argc; /* # arguments on command line */
 char **_argv; /* pointers to arguments in alloc'ed area */
 int _heaptop;
+int _memlimit;
 int	*fmptr;		/*Free memory pointer */
+int *limptr;	/*pointer to tpa limit  */
 int _current;
 int _dfltdsk; /* "current disk" at beginning of execution */
 int _ffcb[NBUFS], /* pointers to the fcb's
@@ -86,8 +88,10 @@ int _argcval;  /* argument count set for functions that need it in call.a99 */
 
 _main() {
 	fmptr = FREEMEM;
+	limptr = MEMLIMIT;
 	_dfltbuf = INTBUF;
-	_heaptop = *fmptr;	/* This is loaded by the MONITOR  */
+	_heaptop = *fmptr;	/* This is loaded by the Shell/Monitor  */
+	_memlimit = *limptr; /* This is loaded by the Shell/Monitor  */
 	_dfltdsk = _cpm(25, 0); /*;get current disk */
 	_setargs();
 	main(_argc, _argv);	/* Return to the loaded programme.  */
@@ -96,7 +100,7 @@ _main() {
 
 _setargs() {
 	char *inname, *outname; /* file names from command line */
-	char *count; /* *count is # characters in command line */
+	int count; /* *count is # characters in command line */
 	char *lastc; /* points to last character in command line */
 	char *mode; /* mode for output file */
 	char *next; /* where the next byte goes into alloc'ed area */
@@ -106,12 +110,12 @@ _setargs() {
 	vptr = CMDBUF;	/* point to the command line address */
 	ptr = *vptr;	/* okay pointer is now pointer to the command line */
 	vptr = CMDSIZ;	/* point to the command line size address */
-	count = *vptr;; /* SHELL CP/M command buffer length vector */
+	count = *vptr; /* SHELL CP/M command buffer length  */
 
-	lastc = ptr + *count - 1;
+	lastc = ptr + count - 1;
 	*lastc = SPACE; /* place a sentinel */
 	_argv = alloc(30); /* space for 15 arg pointers */
-	_argv[0] = next = alloc(*count + 2); /* allocate the buffer */
+	_argv[0] = next = alloc(count + 2); /* allocate the buffer */
 	 *next++ = NULL; /* place 0-th argument */
 	_argc = 0;
 	inname = outname = NULL;
@@ -165,7 +169,9 @@ _redirect(filename, mode, std)
 alloc(b)
 	int b; { /* # bytes desired */
 	_heaptop += b;
-	if (_heaptop & 1) _heaptop++;
+	if (_heaptop > _memlimit)  //will be MEMLIMIT in future
+		return -1;
+	//if (_heaptop & 1) _heaptop++;
 	return _heaptop;
 }
 
@@ -183,7 +189,7 @@ free(addr)
  */
 
 avail() {
-	return (_heaptop);
+	return (_memlimit - _heaptop);
 }
 
 /* error...print message & walkback trace (if available) */
