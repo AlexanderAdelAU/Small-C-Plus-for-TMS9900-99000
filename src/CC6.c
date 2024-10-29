@@ -163,6 +163,7 @@ getloc(sym, off)
 		ol(";Char offset");
 		offset += 1; /* [AC-9900] Need to offset as CCHAR takes two bytes on the stack */
 	}
+
 	if (offset) {
 		ot("\tLI  R4,");
 		outdec(offset);
@@ -297,6 +298,14 @@ swap() {
 immed0() {
 	ot("\tCLR R4");
 }
+
+/* Print full instruction as 0xFFFF or -1 */
+/*	into the primary register */
+immed1() {
+	ot("\tSETO R4");
+}
+
+
 
 immed() {
 	ot("\tLI R4,");
