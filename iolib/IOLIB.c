@@ -14,7 +14,6 @@
 
 /* #define INT_OFF	*/
 
-
 /* turn off interrupts, except during BDOS calls */
 /* programs will run faster, but interrupts will be missed */
 /* to keep interrupts on, comment out this define */
@@ -42,14 +41,18 @@
 #define INTBUF 0xA4    /* Internal Buffer pointer address (00A4H( */
 #define FREEMEM 0xA6    /* Internal Buffer pointer address (00A6H( */
 #define MEMLIMIT 0xB0	/* Memory limit */
+#define STACKLIMIT 0x0500 /* Set stack limit  Should be dynamic in future*/
+#define NAMSIZ 11			/* File Name Size */
+#define FCBSIZ 36			/* FCB SIZE */
 
 /*int dummy = 0; */
+
 int _argc; /* # arguments on command line */
 char **_argv; /* pointers to arguments in alloc'ed area */
-int _heaptop;
-int _memlimit;
-int	*fmptr;		/*Free memory pointer */
-int *limptr;	/*pointer to tpa limit  */
+unsigned int _heaptop;
+unsigned int _memlimit;
+int *fmptr; /*Free memory pointer */
+int *limptr; /*pointer to tpa limit  */
 int _current;
 int _dfltdsk; /* "current disk" at beginning of execution */
 int _ffcb[NBUFS], /* pointers to the fcb's
@@ -73,13 +76,13 @@ int _fmode[NBUFS] = { MFREE, MFREE, MFREE, MFREE, MFREE };
  * stdin and stdout defintions
  */
 /*
-char *stdin, *stdout ;
-*/
+ char *stdin, *stdout ;
+ */
 
 int _ex, _cr; /* extent & current record at beginning
  of this buffer full (used for "A" access) */
 
-int _argcval;  /* argument count set for functions that need it in call.a99 */
+int _argcval; /* argument count set for functions that need it in call.a99 */
 
 /*
  ** -- setup default drive for CPM
@@ -90,11 +93,12 @@ _main() {
 	fmptr = FREEMEM;
 	limptr = MEMLIMIT;
 	_dfltbuf = INTBUF;
-	_heaptop = *fmptr;	/* This is loaded by the Shell/Monitor  */
-	_memlimit = *limptr; /* This is loaded by the Shell/Monitor  */
+	_heaptop = *fmptr; /* This is loaded by the Shell/Monitor  */
+	_setstack(limptr);  /* purpose is to allocated local stack at the memory limit WP unchanged */
+	_memlimit =  *limptr - STACKLIMIT;  /* This is loaded by the Shell/Monitor  */
 	_dfltdsk = _cpm(25, 0); /*;get current disk */
 	_setargs();
-	main(_argc, _argv);	/* Return to the loaded programme.  */
+	main(_argc, _argv); /* Return to the loaded programme.  */
 	exit(0);
 }
 
@@ -105,18 +109,18 @@ _setargs() {
 	char *mode; /* mode for output file */
 	char *next; /* where the next byte goes into alloc'ed area */
 	char *ptr; /* *ptr is next character in command line */
-	int  *vptr;  /* vector pointer removes the need for pointer to pointer confusion */
+	int *vptr; /* vector pointer removes the need for pointer to pointer confusion */
 
-	vptr = CMDBUF;	/* point to the command line address */
-	ptr = *vptr;	/* okay pointer is now pointer to the command line */
-	vptr = CMDSIZ;	/* point to the command line size address */
+	vptr = CMDBUF; /* point to the command line address */
+	ptr = *vptr; /* okay pointer is now pointer to the command line */
+	vptr = CMDSIZ; /* point to the command line size address */
 	count = *vptr; /* SHELL CP/M command buffer length  */
 
 	lastc = ptr + count - 1;
 	*lastc = SPACE; /* place a sentinel */
 	_argv = alloc(30); /* space for 15 arg pointers */
 	_argv[0] = next = alloc(count + 2); /* allocate the buffer */
-	 *next++ = NULL; /* place 0-th argument */
+	*next++ = NULL; /* place 0-th argument */
 	_argc = 0;
 	inname = outname = NULL;
 	while (++ptr < lastc) {
@@ -168,11 +172,12 @@ _redirect(filename, mode, std)
 
 alloc(b)
 	int b; { /* # bytes desired */
+	if (b & 1)
+		b++;
 	_heaptop += b;
-	if (_heaptop > _memlimit)  //will be MEMLIMIT in future
+	if (_heaptop > _memlimit)
 		return -1;
-	//if (_heaptop & 1) _heaptop++;
-	return _heaptop;
+	return (_heaptop - b);
 }
 
 /* reset the top of heap pointer to addr* */
@@ -209,12 +214,12 @@ err(s)
 
 /*
  #asm
-  EVEN
-STDIN WORD	0 ; 0 initially, or unit number for input file
+ EVEN
+ STDIN WORD	0 ; 0 initially, or unit number for input file
  ; if input has been redirected by args()
-STDOUT WORD 1	; 1 initially, or unit number for output file
+ STDOUT WORD 1	; 1 initially, or unit number for output file
  ; if output has been redirected by args()
-  EVEN
+ EVEN
  #endasm
  */
 
@@ -242,20 +247,21 @@ puts(buf)
  *           returns 0 on failure, 1 on success
  */
 _newfcb(name, fcb)
-	char *name;char *fcb; {
-	char *c;
+	char *name, *fcb; {
+	char c;
 	int i;
-
 	/* clear file name */
-	i = 11;
+	i = NAMSIZ;
 	while (i)
-		fcb[i--] = ' ';
+		fcb[i--] = ' ';		/* This leave the first byte fcb[0]  - drive number  */
+
 	/* clear rest of fcb */
-	i = 12;
-	while (i < 36) {
+	i = NAMSIZ + 1;
+	while (i < FCBSIZ) { /* size of fcb */
 		fcb[i++] = 0;
 	}
-	/* Note for CDOS the drive location is byte 33 in the fcb  */
+
+	/* Note for BDOS the drive location is byte 33 in the fcb  */
 	if (name[1] == ':') { /* transfer disk */
 		fcb[33] = *name & 0xf;
 		name += 2;
@@ -267,18 +273,21 @@ _newfcb(name, fcb)
 
 	/* transfer name */
 	i = 0;
+
 	while (c = _upper(*name++)) {
 		if (c == '.')
 			break;
-	/*	putc(c,1); */
-		fcb[i++] = c; /*0X41; */
+		/*	putc(c,1); */
+		fcb[i++] = c;  /*0X41; */
 	}
+
 	if (c == '.') { /* transfer extension */
 		i = 9;
-		while ((c = _upper(*name++)) && i < 12) {
+		while ((c = _upper(*name++)) && i < NAMSIZ + 1) {
 			fcb[i++] = c;
 		}
 	}
+
 	if (c == 0)
 		return 1; /* OK if last char is NULL */
 	return 0;
@@ -305,16 +314,15 @@ fopen(name, mode)
 	/* allocate memory if required */
 	if (_ffcb[index] == 0)
 		_ffcb[index] = alloc(BUFLGH);
-
-	_ffirst[index] = _ffcb[index] + 36;
+	_ffirst[index] = _ffcb[index] + FCBSIZ;
 	_flast[index] = _ffirst[index] + LGH;
-
 	fcb = _ffcb[index];
 
 	/* initialise file control block */
 	if (_newfcb(name, fcb) == 0) {
-		return 0; 	/* invalid file name */
+		return 0; /* invalid file name */
 	}
+	//print_hex(fcb, 34);
 	if ((c = _upper(*mode)) == 'R' || c == 'A') {
 		if (_cpm(15, fcb) < 0) {
 			return 0; /* file not found */
@@ -333,14 +341,24 @@ fopen(name, mode)
 		}
 		return unit;
 	} else if (c == 'W') {
+
 		_cpm(19, fcb); /* delete file */
-		if (_cpm(22, fcb) < 0) /* create file */
+		if (_cpm(22, fcb) < 0) { /* create file */
 			return 0; /* creation failure */
+		}
 		_fmode[index] = MWRITE; /* open for writing */
 		_fnext[index] = _ffirst[index]; /* buffer is empty */
 		return unit;
 	}
 	return 0;
+}
+/* debug */
+print_hex(fcb, size) char *fcb; int size; {
+	int i;
+   for (i = 0; i < size; i++) {
+       printf("%02x ", fcb[i]);  // Print each byte in hex
+   }
+   printf("\n");
 }
 
 /* close a file */
@@ -446,7 +464,6 @@ getb(unit)
 	int index;
 	char *next;
 
-
 	if (unit == 0) { /* STDIN */
 		c = _cpm(1, 0);
 		if (c == '\n')
@@ -538,18 +555,18 @@ fflush(unit)
 }
 
 _upper(c)
-	int c; /* converts to upper case */
+	char c; /* converts to upper case */
 {
-	if (c >= 'a')
+	if (c >= 'a') {
 		return c - 32;
+	}
 	return c;
 }
 
 /* Exit value will govern Shell messages and behaviour */
 
 exit(value)
-int value;
-{
+	int value; {
 	int index;
 
 	/* ensure that all files open for write have their buffers flushed */
@@ -560,3 +577,36 @@ int value;
 	}
 	_shell(value); /*return to shell - _cbdos.a99 source file */
 }
+/*
+ * Here we set the new stack and pointer.  Normally it is allocated by shell but
+ * C programmes normally required more space.  So we move the stack pointer to the
+ * memory limit and then adjust the memory limit accordiningly.
+ *
+ * In this routine we must also preserve the return address that
+ * is on the SHELL stack, so we can exit and return to SHELL.
+ * Stack looks like this:
+ *
+ * TOP 		return address
+ * TOP + 2 	limptr argument
+ * TOP + 4	shell return address
+ *
+ * 	NOTE.  WORKSPACE IS NOT ALTERED
+ *
+ */
+_setstack(limptr)
+	int *limptr; {
+
+#asm
+	MOV *SP+,R0	;RETURN ADDRESS
+	MOV *SP+,R1	;GET MEMORY	LIMIT (limptr)
+	MOV * SP, R2;SHELL RETURN ADDRESS
+	MOV *R1, SP;	NEW STACK POINTER
+	DECT SP
+	MOV R2, *SP;PUSH SHELL RETURN ADDRESSIS ON 	THE NEW	STACK
+	DECT SP
+	MOV R1,*SP;	PUSH MEMORY LIMIT ON THE NEW 	STACK
+	DECT SP
+	MOV R0,*SP;	PUSH RETURN ADDRESS IS 	ON THE NEW STACK
+#endasm
+}
+
