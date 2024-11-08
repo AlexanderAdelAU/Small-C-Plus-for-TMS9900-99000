@@ -24,7 +24,7 @@ may help building and testing the compiler in your own environment.
 A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
 
 ## Floating Point Library
-The floating point libraray implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
+The floating point library implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
 
 An IOLIB is included that supports CP/M compatible (BDOS in this respository) operating system calls and a core set of 40bit floating point library routines.  The core set includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP, SQRT.   The actual Floating Point Library is included during Linking as a separate library, so that CLIB99 is not unnecessarily large. Other functions such as trancedentals will be added later.  The TMS9900 Floating Point Library filename is CFLOAT48.A99 and was ported from a Z80 Floating Point library.
 
