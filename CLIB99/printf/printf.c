@@ -6,8 +6,11 @@
  *
  *	R M Yorston 1987
  */
+
+
 #include "stdio.h"
-#include "float.h"
+
+int _printf(), _outc();
 
 /*
  #define NULL 0
@@ -21,7 +24,6 @@
  *        operates as described by Kernighan & Ritchie
  *        only d, x, c, s, and u specs are supported.
  */
-
 char *_String;
 int _Count;
 
@@ -116,9 +118,9 @@ _printf(fd, nxtarg)
 		}
 
 		ctl = cx; /* accept conversion spec */
-		if (c != 's')
-			while (*sptr == ' ')
-				++sptr;
+		if ( c != 's' && c != 'c' )
+			while ( *sptr == ' ' )
+				++sptr ;
 		len = -1;
 		while (sptr[++len])
 			; /* get length */
