@@ -49,8 +49,6 @@ header() {
 
 	ol("\tDXOP CALL,6"); /*  These are defined in the MONITOR  */
 	ol("\tDXOP RET,7");
-	ol("\tDXOP PUSH,8");
-	ol("\tDXOP POP,9");
 	ol("\tDXOP WHEX,10");
 	ol("\tDXOP WRITE,12    ;WRITE CHAR IN MSB ");
 	ol(
@@ -63,10 +61,10 @@ header() {
 	/*	} */
 
 	if (mainflg) { /* do stuff needed for first */
-		/* set default drive for CP/M */
+		/* set default code */
 
-		/* FREEMEM is setup by the SHELL */
-		/* WP used to in some offset instructions  */
+		/* FREEMEM and MEMLIMIT are setup by the SHELL */
+		/* WP used to in some offset instructions (i.e. floating point  */
 		ol("\tSTWP WP ");
 		/* Branch is used because IOLIB will vector back to "main" */
 		ol("\tB @_main## ; This calls iolib99 entry point");
@@ -80,7 +78,8 @@ header() {
 		else
 			outstr(Filename);
 		nl();
-		ol("\tNOP; Required to terminate link chain with non zero for global variables");
+		ol(
+				"\tNOP; Required to terminate link chain with non zero for global variables");
 	}
 }
 
@@ -165,10 +164,10 @@ getloc(sym, off)
 	}
 
 	if (offset) {
-		ot("\tLI  R4,");
+		ot("\tLI R4,");
 		outdec(offset);
 		nl();
-		ol("\tA  SP,R4");
+		ol("\tA SP,R4");
 	} else
 		ol("\tMOV SP,R4");
 
@@ -305,8 +304,6 @@ immed1() {
 	ot("\tSETO R4");
 }
 
-
-
 immed() {
 	ot("\tLI R4,");
 }
@@ -334,7 +331,7 @@ immedlit() {
 
 /* Push the primary register onto the stack */
 zpush() {
-	ol(";zpush()");
+	oc(";zpush()", OPTIMIZE); /*Remove comment if we are optimising code */
 	ol("\tDECT SP");
 	ol("\tMOV R4,*SP");
 	Zsp -= 2;
@@ -343,7 +340,7 @@ zpush() {
  * but not needed now and can be removed at some stage as it is equivalent to zpush()
  */
 zpushC() {
-	ol(";zpushC()");
+	oc(";zpushC()", OPTIMIZE); /*Remove comment if we are optimising code */
 	ol("\tDECT SP");
 	ol("\tMOV R4,*SP");
 	Zsp -= 2;
@@ -351,7 +348,7 @@ zpushC() {
 
 /* Push the primary register onto the stack */
 cpush() {
-	ol(";cpush()");
+	oc(";cpush()", OPTIMIZE); /*Remove comment if we are optimising code */
 	ol("\tDECT SP");
 	ol("\tMOV R4,*SP");
 	Zsp -= 2;
@@ -382,7 +379,7 @@ mainpop() {
 
 /* Pop the top of the stack into the secondary register */
 zpop() {
-	ol(";zpop()");
+	oc(";zpop()", OPTIMIZE); /*Remove comment if we are optimising code */
 	ol("\tMOV *SP+,R3");
 	Zsp += 2;
 }
@@ -452,7 +449,7 @@ callstk(n)
 jump(label)
 	int label; {
 	ol(";jump(label)");
-	ot("\tB  @");
+	ot("\tB @");
 	printlabel(label);
 	nl();
 }
@@ -721,7 +718,7 @@ zxor() {
 /* 'And' the primary and secondary */
 /*	(results in primary) */
 zand() {
-	ol(";zand()");
+	oc(";zand()", 0);
 	ol("\tINV R3");
 	ol("\tSZC R3,R4");
 
@@ -797,7 +794,7 @@ zeq() {
 /* test for equal to zero */
 eq0(label)
 	int label; {
-	ol(";eq0(label)");
+	oc(";eq0(label)",OPTIMIZE);
 	ol("\tMOV R4,R4");
 	ol("\tJEQ $+6");
 	ot("\tB @"); /* Branch if not equal */
@@ -1010,181 +1007,301 @@ entry(name)
 	outname(name);
 	nl();
 }
+
+countToNewline(str, start)
+	char *str;int start; {
+	int count = 0;
+	int i;
+
+	/* Check if starting point is within the string */
+	if (str[start] == '\0') {
+		return 0; /* Return 0 if start is out of bounds */
+	}
+
+	/*  Count until we find a newline or end of string */
+	for (i = start; str[i] != '\0'; i++) {
+		if (str[i] == '\n') {
+			break;
+		}
+		count++;
+	}
+
+	return count;
+}
+
 /*
  * Peephole optimiser.  To be completed.
  */
 peephole(ptr, output)
 	char *ptr;int output; {
-	char *tptr;
+	char *tptr, *str;
+	int count1, count2, count3, i;
 
 	while (*ptr) {
-		/* The unsigned compare optimisation reduces code by 4 bytes
-		 * and removes a BL operation
+
+		/* optimise
+		 MOVB *R4,R4
+		 SRA R4,8
+		 DECT SP
+		 MOV R4,*SP
+		 LI R4,32
+		 MOV *SP+,R3
+
+		 This can be optimised to
+		 MOVB *R4,R3
+		 SRA R3,8
+		 LI R4,32
 		 */
+		tptr = ptr;
+		if (count1 = streq(tptr,
+				"\tMOVB *R4,R4\n\tSRA R4,8\n\tDECT SP\n\tMOV R4,*SP\n")) {
+			if (streq(tptr + count1, "\tLI R4,")) {
+				count2 = countToNewline(tptr + count1, 0); /* Get length of the LI R4,xxx line */
+				if (streq(tptr + count1 + count2+1, "\tMOV *SP+,R3\n")) {
+					*(tptr + count1 + count2) = '\0'; /* mark the end of LI R4 string with a null */
+					ot("\tMOVB *R4,R3;optimised\n");
+					ot("\tSRA R3,8\n");
+					ot(tptr + count1);
+					ptr += count1 + count2 + 13; /* this is the count of the code to be replaced */
+					continue;
+				}
+			}
+		}
+	/*
+	* ;indirect ccgint
+	MOV *R4,R4
+	DECT SP
+	MOV R4,*SP
+	LI R4,4
+	MOV *SP+,R3
 
-		if (streq(ptr, "\tBL @_ccuge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJHE $+6\n");
-			ptr += 34;
-			continue;
-		}
-		if (streq(ptr, "\tBL @_ccult##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJL $+6\n");
-			ptr += 34;
-			continue;
-		}
-		if (streq(ptr, "\tBL @_ccugt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJH $+6\n");
-			ptr += 34;
-			continue;
-		}
-		if (streq(ptr, "\tBL @_ccule##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJLE $+6\n");
-			ptr += 34;
-			continue;
-		}
-		/*TEST IF R3 = R4*/
-		if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJEQ $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/*  TEST IF R3 != R4 */
-		if (streq(ptr, "\tBL @_ccne##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJNE $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/*TEST IF R3 > R4  (SIGNED)*/
-		if (streq(ptr, "\tBL @_ccgt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJGT $+6\n");
-			ptr += 33;
-			continue;
+	This can be optimised to
+	MOVB *R4,R3
+	LI R4,4
+	*/
+		tptr = ptr;
+		if (count1 = streq(tptr,"\tMOV *R4,R4\n\tDECT SP\n\tMOV R4,*SP\n")) {
+			if (streq(tptr + count1, "\tLI R4,")) {
+				count2 = countToNewline(tptr + count1, 0); /* Get length of the LI R4,xxx line */
+				if (streq(tptr + count1 + count2+1, "\tMOV *SP+,R3\n")) {
+					*(tptr + count1 + count2) = '\0'; /* mark the end of LI R4 string with a null */
+					ot("\tMOV *R4,R3;optimised\n");
+					ot(tptr + count1);
+					ptr += count1 + count2 + 13; /* this is the count of the code to be replaced */
+					continue;
+				}
+			}
 		}
 
-		/*TEST IF R3 < R4  (SIGNED)*/
-		if (streq(ptr, "\tBL @_cclt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJLT $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/* TEST IF R3 <= R4 (SIGNED) */
-		if (streq(ptr, "\tBL @_ccle##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R4,R3\n");
-			ot("\tJGT $+8\n");
-			ot("\tJEQ $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/*TEST IF R3 >= R4 (SIGNED)*/
-		if (streq(ptr, "\tBL @_ccge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R4,R3\n");
-			ot("\tJLT $+6\n");
-			ptr += 33;
-			continue;
-		}
+	/*
+	 * The unsigned compare optimisation reduces code by 4 bytes
+	 * and removes a BL operation
+	 */
 
-		else
-			cout(*ptr++, output);
+	if (streq(ptr, "\tBL @_ccuge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJHE $+6\n");
+		ptr += 34;
 		continue;
+	}
+	if (streq(ptr, "\tBL @_ccult##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJL $+6\n");
+		ptr += 34;
+		continue;
+	}
+	if (streq(ptr, "\tBL @_ccugt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJH $+6\n");
+		ptr += 34;
+		continue;
+	}
+	if (streq(ptr, "\tBL @_ccule##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJLE $+6\n");
+		ptr += 34;
+		continue;
+	}
+	/*
+	 *  BL @_cceq##
+		MOV R4,R4
+		JNE $+6
+	*/
+	/*TEST IF R3 = R4*/
+	if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4;optimised\n");
+		ot("\tJEQ $+6\n");
+		ptr += 33;
+		continue;
+	}
+/*
+ *  BL @_cceq##
+	MOV R4,R4
+	JEQ $+6
+*/
+	/*TEST IF R3 = R4* - Alternate test */
+	if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJEQ $+6\n")) {
+		ot("\tC R3,R4;optimised\n");
+		ot("\tJNE $+6\n");
+		ptr += 33;
+		continue;
+	}
+
+	/*  TEST IF R3 != R4 */
+	if (streq(ptr, "\tBL @_ccne##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJNE $+6\n");
+		ptr += 33;
+		continue;
+	}
+	/*TEST IF R3 > R4  (SIGNED)*/
+	if (streq(ptr, "\tBL @_ccgt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJGT $+6\n");
+		ptr += 33;
+		continue;
+	}
+
+	/*TEST IF R3 < R4  (SIGNED)*/
+	if (streq(ptr, "\tBL @_cclt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R3,R4\n");
+		ot("\tJLT $+6\n");
+		ptr += 33;
+		continue;
+	}
+	/* TEST IF R3 <= R4 (SIGNED) */
+	if (streq(ptr, "\tBL @_ccle##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R4,R3\n");
+		ot("\tJGT $+8\n");
+		ot("\tJEQ $+6\n");
+		ptr += 33;
+		continue;
+	}
+	/*TEST IF R3 >= R4 (SIGNED)*/
+	if (streq(ptr, "\tBL @_ccge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
+		ot("\tC R4,R3\n");
+		ot("\tJLT $+6\n");
+		ptr += 33;
+		continue;
+	} else
+		cout(*ptr++, output);
+	continue;
 
 
-		if (streq(ptr, "\tLI R4,")) {
-			tptr = ptr + 7;
-			while (*tptr != '\n')
-				++tptr;
-			if (streq(tptr + 1, "\tA SP,R4\n\tMOV *R4,R4")) {
-				*tptr++ = '\0'; /* null the li r4,nnnn line */
-				if (streq(tptr + 21, "\tMOV R4,R3;;"))
-				/*  	{ot(" MOV  @");ot(ptr+7);ot("(SP),R3");nl();ot(" MOV *R3,R3");nl();ptr=tptr+34;} */
-				{
-					ot("\tMOV  @");
-					ot(ptr + 7);
-					ot("(SP),R3 ;optimised 1");
-					nl();
-					nl();
-					ptr = tptr + 31;
-				} else {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4 ;optimised 2");
-					nl();
-					ptr = tptr + 36;
-				}
-			} else if (streq(tptr + 1, "\tA ZZZSP,R4\n\tMOVB *R4,R4")) {
-				*tptr++ = '\0';
-				if (streq(tptr + 22, " MOVB R4,R3")) {
-					ot("\tMOVB @");
-					ot(ptr + 7);
-					ot("(SP),R3");
-					nl();
-					ot(" MOVB *R3,R3");
-					nl();
-					ptr = tptr + 34;
-				} else {
-					ot("\tMOVB @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ptr = tptr + 22;
-				}
-			}
-			/* else cout(*ptr++,output); */
-			else if (streq(tptr + 1, "\tA ZZZSP,R4\n\tPUSH R4")) {
-				*tptr++ = '\0';
-				if (streq(tptr + 18, "\tMOV *R4,R4")) {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ot("\tPUSH R4 ;optimised");
-					nl();
-					ptr = tptr + 34;
-				} else {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ptr = tptr + 22;
-				}
-			} else if (streq(tptr + 1, "\tZZZMOV *SP+,R4")) {
-				*tptr++ = '\0';
-				ol("\tMOV *SP+,R4 ;optimised 7");
-				ptr = ptr + 27;
-			} else
-				cout(*ptr++, output);
-		} else if (streq(ptr, "\tMOV SP,R4\n\tMOV *R4,R4")) {
-			if (streq(ptr + 23, "\tMOV R4,R3;;")) {
-				ol("\tMOV *SP,R3  ;optimised 3");
-				ptr = ptr + 37;
+	/*
+	 *
+	 LI R4,8
+	 A SP,R4
+	 DECT SP
+	 MOV R4,*SP
+	 CLR R4
+	 MOV *SP+,R3
+
+	 MOV @8(SP),R3
+	 CLR R4
+
+	 and
+
+	 LI R4,8
+	 A SP,R4
+	 DECT SP
+	 MOV R4,*SP
+	 CLR R4
+	 MOV *SP+,R3
+
+	 MOV @8(SP),R3
+	 CLR R4
+	 */
+
+	if (streq(ptr, "\tLI R4,")) {
+		tptr = ptr + 7;
+		while (*tptr != '\n')
+			++tptr;
+		if (streq(tptr + 1, "\tA SP,R4\n\tMOV *R4,R4")) {
+			*tptr++ = '\0'; /* null the li r4,nnnn line */
+			if (streq(tptr + 21, "\tMOV R4,R3;;"))
+			/*  	{ot(" MOV  @");ot(ptr+7);ot("(SP),R3");nl();ot(" MOV *R3,R3");nl();ptr=tptr+34;} */
+			{
+				ot("\tMOV  @");
+				ot(ptr + 7);
+				ot("(SP),R3 ;optimised.2");
+				nl();
+				nl();
+				ptr = tptr + 31;
 			} else {
-				ol("\tMOV *SP,R4  ;optimised 4");
-				ptr = ptr + 24;
+				ot("\tMOV @");
+				ot(ptr + 7);
+				ot("(SP),R4 ;optimised.3");
+				nl();
+				ptr = tptr + 36;
 			}
-		} else if (streq(ptr,
-				"\tMOV *SP+,R3\n\tA R3,R4\n\tDECT SP\n\tMOV R4,*SP")) {
-			ol("\tA R4,*SP ; optimised 5");
-			ptr = ptr + 43;
+		} else if (streq(tptr + 1, "\tA SP,R4\n\tMOVB *R4,R4")) {
+			*tptr++ = '\0';
+			if (streq(tptr + 22, " MOVB R4,R3")) {
+				ot("\tMOVB @");
+				ot(ptr + 7);
+				ot("(SP),R3");
+				nl();
+				ot(" MOVB *R3,R3");
+				nl();
+				ptr = tptr + 34;
+			} else {
+				ot("\tMOVB @");
+				ot(ptr + 7);
+				ot("(SP),R4");
+				nl();
+				ptr = tptr + 22;
+			}
 		}
-		if (streq(ptr, "\tMOV *SP+,R3\n\tA R3,R4")) {
-			ol("\tA *SP+,R4; optimised 6");
-			ptr += 22;
+		/* else cout(*ptr++,output); */
+		else if (streq(tptr + 1, "\tA ZZZSP,R4\n\tPUSH R4")) {
+			*tptr++ = '\0';
+			if (streq(tptr + 18, "\tMOV *R4,R4")) {
+				ot("\tMOV @");
+				ot(ptr + 7);
+				ot("(SP),R4");
+				nl();
+				ot("\tPUSH R4 ;optimised");
+				nl();
+				ptr = tptr + 34;
+			} else {
+				ot("\tMOV @");
+				ot(ptr + 7);
+				ot("(SP),R4");
+				nl();
+				ptr = tptr + 22;
+			}
+		} else if (streq(tptr + 1, "\tZZZMOV *SP+,R4")) {
+			*tptr++ = '\0';
+			ol("\tMOV *SP+,R4 ;optimised 7");
+			ptr = ptr + 27;
 		} else
 			cout(*ptr++, output);
+	} else if (streq(ptr, "\tMOV SP,R4\n\tMOV *R4,R4")) {
+		if (streq(ptr + 23, "\tMOV R4,R3;;")) {
+			ol("\tMOV *SP,R3  ;optimised 3");
+			ptr = ptr + 37;
+		} else {
+			ol("\tMOV *SP,R4  ;optimised 4");
+			ptr = ptr + 24;
+		}
+	} else if (streq(ptr,
+			"\tMOV *SP+,R3\n\tA R3,R4\n\tDECT SP\n\tMOV R4,*SP")) {
+		ol("\tA R4,*SP ; optimised 5");
+		ptr = ptr + 43;
 	}
+	if (streq(ptr, "\tMOV *SP+,R3\n\tA R3,R4")) {
+		ol("\tA *SP+,R4; optimised 6");
+		ptr += 22;
+	} else
+		cout(*ptr++, output);
+}
 }
 
 cout(c, fd)
-	char c;int fd; {
-	if (fputc(c, fd) == -1) {
-		fabort();
-	}
+char c;int fd; {
+if (fputc(c, fd) == -1) {
+	fabort();
+}
 }
 /*	<<<<<  End of Small-C/Plus compiler  >>>>>	*/

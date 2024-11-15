@@ -7,7 +7,7 @@
 
 /*	System wide name size (for symbols)	*/
 
-#define SMALL_C  /*- note this is predefined in the setup_sym()  function */
+#define SMALL_C /* - note this is predefined in the setup_sym()  function */
 
 #ifdef SMALL_C
 	#define NULL_FD 0
@@ -123,7 +123,7 @@ struct tag_symbol {
 
 #define TAG_SYMBOL struct tag_symbol
 
-/* #define OPTIMIZE */
+#define OPTIMIZE 1		/* turns on peephole optimisation */
 #ifdef SMALL_C
 #define NULL_TAG 0
 #else
@@ -201,7 +201,6 @@ struct while_tab {
 /* define length of names for assembler */
 
 #define ASMLEN	12
-
 #ifdef SMALL_C
 #define SYM_CAST
 #define TAG_CAST
