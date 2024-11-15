@@ -34,7 +34,7 @@ A sample test programme that demonstrates how to calculate a Double Integral usi
 	copy DoubleIntegralSimpsonsRule.c, cDSR99.c
 	smallcp -C cDSR99
 	R99 cDSR99 SCHCLC
-	link99  -M  -S cDSR99 clib99.LIB iolib99.LIB strlib99.LIB fplib99.LIB
+	link99  -M  -S cDSR99 clib99f.LIB iolib99.LIB
 ```
 
 The programme performs a double integration on the following mathemtical function"
