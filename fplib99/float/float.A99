@@ -1,0 +1,436 @@
+;* * *  Small-C/Plus Version 1.06a for the TMS 9900 - Cameron * * *
+;       Cain, Van Zandt, Hendrix, Yorston, Cameron
+;          Original Z80  Version 21st April 1990       
+;
+R0	EQU 0
+R1	EQU 1
+R2	EQU 2
+R3	EQU 3
+R4	EQU 4
+R8	EQU 8
+SL	EQU 9
+SP	EQU 10
+WP	EQU 13
+R11	EQU 11
+	DXOP CALL,6
+	DXOP RET,7
+	DXOP PUSH,8
+	DXOP POP,9
+	DXOP WHEX,10
+	DXOP WRITE,12    ;WRITE CHAR IN MSB 
+	DXOP DEBUG,15    ;TRACE THE PRECEDING INSTRUCTION, PC,ST and REGISTERS 
+
+;-------- START MODULE -----------
+	NAM float\float
+	NOP; Required to terminate link chain with non zero for global variables
+;#include "float/float.h"
+;/*
+; * Floating Point declarations to ensure the Small C compiler generates the correct
+; * handling for the return variables
+; *
+; */
+;extern double floor();
+;extern double float();
+;extern int ifix();
+;extern double sin();
+;extern double cos();
+;extern double tan();
+;extern double pow();
+;extern double fabs();
+;extern double log();
+;extern double log10();
+;extern double exp();
+;extern double fmod();
+;extern double sqrt();
+;extern double atan();
+;extern double _ccfloor();
+;extern double _ccfloat();
+;extern double _ccpow();
+;extern double _ccsin();
+;extern double _cctan();
+;extern double _ccatan();
+;extern double _cccos();
+;extern double _ccifix();
+;extern double _ccfabs();
+;extern double _cclog();
+;extern double _ccexp();
+;extern double _ccsqrt();
+;extern double _ccmod();
+;extern double _cclog10();
+;/*
+; *	These are the Floating Point prototype functions declarations that call the
+; *	floating point libary entry points.
+; */
+;double floor (x)
+	EVEN
+floor:
+;double x;
+;{
+;modstk(newsp,save)
+;	return _ccfloor(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccfloor
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double float (x)
+	EVEN
+float:
+;int x;
+;{
+;	return _ccfloat(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect ccgint
+	MOV *R4,R4
+;zpush()
+	DECT SP
+	MOV R4,*SP
+;zcall()
+	CALL @_ccfloat
+;modstk(newsp,save)
+	INCT SP
+;modstk(newsp,save)
+	RET
+;}
+;int ifix (x)
+	EVEN
+ifix:
+;double x;
+;{
+;	return _ccifix(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccifix
+;modstk(newsp,save)
+	AI SP,6
+	BL @_ifix##
+;modstk(newsp,save)
+	RET
+;}
+;double sin(x)
+	EVEN
+sin:
+;double x;
+;{
+;	return _ccsin(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccsin
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double cos(x)
+	EVEN
+cos:
+;double x;
+;{
+;	return _cccos(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cccos
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double tan(x)
+	EVEN
+tan:
+;double x;
+;{
+;	return _cctan(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cctan
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double atan(x)
+	EVEN
+atan:
+;double x;
+;{
+;	return _ccatan(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccatan
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double fabs(x)
+	EVEN
+fabs:
+;double x;
+;{
+;	return _ccfabs(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccfabs
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double log(x)
+	EVEN
+log:
+;double x;
+;{
+;	return _cclog(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cclog
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double log10(x)
+	EVEN
+log10:
+;double x;
+;{
+;	return _cclog10(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_cclog10
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double exp(x)
+	EVEN
+exp:
+;double x;
+;{
+;	return _ccexp(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccexp
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double sqrt(x)
+	EVEN
+sqrt:
+;double x;
+;{
+;	return _ccsqrt(x);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,2
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccsqrt
+;modstk(newsp,save)
+	AI SP,6
+;modstk(newsp,save)
+	RET
+;}
+;double pow(x,y)
+	EVEN
+pow:
+;double x;double y;
+;{
+;	return _ccpow(x,y);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccpow
+;modstk(newsp,save)
+	AI SP,12
+;modstk(newsp,save)
+	RET
+;}
+;double fmod(x,y)
+	EVEN
+fmod:
+;double x;double y;
+;{
+;	return _ccmod(x,y);
+;modstk(newsp,save)
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;getloc(sym, off)
+	LI  R4,8
+	A  SP,R4
+;indirect float
+;fpcall()
+	CALL @_fload##
+;fpush()
+;fpcall()
+	CALL @_fpush##
+;zcall()
+	CALL @_ccmod
+;modstk(newsp,save)
+	AI SP,12
+;modstk(newsp,save)
+	RET
+;}
+	EXT _cccos
+	ENT atan
+	EXT _ccexp
+	EXT _cclog
+	EXT _ccmod
+	ENT fmod
+	EXT _cctan
+	ENT ifix
+	EXT _ccsin
+	EXT _ccfabs
+	EXT _ccpow
+	EXT _ccatan
+	ENT log10
+	EXT _ccifix
+	ENT float
+	ENT sqrt
+	ENT floor
+	ENT cos
+	ENT exp
+	ENT log
+	ENT tan
+	EXT _ccsqrt
+	EXT _cclog10
+	ENT sin
+	ENT pow
+	EXT _ccfloat
+	EXT _ccfloor
+	ENT fabs
+	EVEN
+	END
+
+; --- End of Compilation ---
