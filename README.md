@@ -21,7 +21,7 @@ It is compiled using MingW GCC and therefore operates as a Cross Compiler howeve
 should be able to self compile with the appropriate OS support on the target computer.  The Eclipse project files are included as a zip file that
 may help building and testing the compiler in your own environment.
 
-A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 18 seconds.
+A test programme for the Byte Sieve.c benchmark is included and runs on a 20MHz TMS99105A in 16 seconds.
 
 ## Floating Point Library
 The floating point library implementation is a retargetting of  Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80)
