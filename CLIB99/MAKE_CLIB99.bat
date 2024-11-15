@@ -9,10 +9,10 @@ smallcp -C -M printf\utoi
 R99 printf\utoi SCHCLC
 smallcp -C -M printf\xtoi
 R99 printf\xtoi SCHCLC
-REM smallcp -C -M printf\itox
+smallcp -C -M printf\itox
 R99 printf\itox SCHCLC
-REM smallcp -C -M printf\printf
-REM R99 printf\printf SCHCLC
+smallcp -C -M printf\printf
+R99 printf\printf SCHCLC
 smallcp -C -M printf\printf2
 R99 printf\printf2 SCHCLC
 copy printf\*.R99
@@ -41,8 +41,10 @@ del *.NDX
 del *.L$
 del *.N$
 REM Make the library
-lib99 -U clib99 printf2 itod itou utoi xtoi itox 
-lib99 -U strlib99 strcpy
+REM create lib99f for floating point support and lib99 for non floating point
+lib99 -U clib99 printf itod itou utoi xtoi itox strcpy
+lib99 -U clib99f printf2 itod itou utoi xtoi itox strcpy float cfloatm48
+rem lib99 -U strlib99 strcpy
 del *.R99
 
 
