@@ -28,7 +28,7 @@ The floating point library implementation is a retargetting of  Anders Hejlsberg
 
 An IOLIB is included that supports CP/M compatible (BDOS in this respository) operating system calls and a core set of 40bit floating point library routines.  The core set includes, FPADD, FPMUL,FPSUB, FPDIV, SIN, COS, TAN, POW,LN,EXP, SQRT.   The actual Floating Point Library is included during Linking CLIB99f, where the 'f' indicaates it contains the floating point library( CLIB99 does not). Other functions such as trancedentals will be added later.  
 
-A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below and is compiled using the following syntax:
+A sample test programme that demonstrates how to calculate a Double Integral using Simpson's Rule is shown below and is compiled using the following script:
 
 ```
 	copy DoubleIntegralSimpsonsRule.c, cDSR99.c
