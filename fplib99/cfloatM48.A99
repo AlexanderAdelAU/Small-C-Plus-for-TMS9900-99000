@@ -140,11 +140,12 @@ R8	EQU 	8		;Free use
 R5'	EQU	R1		;Prime register
 R6'	EQU	R2		;Prime register
 R7'	EQU	R3		;Prime register
-WP2	EQU	9		;Secondary Workspace Register when two arguments are required, e.g. FPMUL etc
 WP	EQU 	13		;WORKSPACE REGISTER
 ST	EQU	15		;STATUS REGISTER
 SP	EQU 	10		;STACK POINTER
 R11	EQU 	11
+WP2	EQU	R11		;Secondary Workspace Register when two arguments are required, e.g. FPMUL etc
+
 
 	DXOP 	CALL,6
 	DXOP 	RET,7
@@ -289,11 +290,11 @@ _fpush::	MOV	*SP,R0
 ;
 ;	push floating point accumulator
 ;	(preserve return address and next stacked word)
-;	SP->	|RETURN |
+;	SP->	|RETURN	|
 ;	SP+2	| WORD	|
 ;				SP+4	|R5 	|
-;	SP->	|RETURN |		SP+6	|R6	|
-;	SP+2	| WORD  |	=>	SP+8	|R7	|
+;	SP->	|RETURN	|	SP+6	|R6	|
+;	SP+2	| WORD	|=>	SP+8	|R7	|
 ;
 ;
 _fpush2:: 	MOV	*SP,@-6(SP)		;New location for return address at top of stack
@@ -349,12 +350,13 @@ ADD1:	MOVB	@2*R7'+1(WP),R0		;Is AC' zero?
 	MOVB	@2*R7+1(WP),R0		;Is AC zero?
 	JNE	ADD2			;No => ADD2
 	CALL	@EXX			;Return AC'
-	ANDI	R5, CLR_SIGN		;Make AC' Positive
+	ANDI	R5,CLR_SIGN			;Make AC' Positive
 	JMP	ADD10
 ;
 ; Work on AC as it could be positive or negative
 ;
-ADD2:	PUSH	R5			;Save AC sign for next operation
+ADD2:	DECT	SP
+	MOV	R5,*SP			;Save AC sign for next operation
 	LI	R8,SIGN*256
 	SOCB	R8,R5			;Set AC MSB as Negative
 	SOCB	R8,R5'			;Set AC' MSB as Negative
@@ -412,7 +414,9 @@ ADD4:	MOV	*SP+,R0			;Get the AC sign
 ;
 ADD5:	CALL 	@CMPAC			;Compare AC to AC'
 	STST	ST			;Save for sign in ADD9
-	PUSH	ST			;Save on stack
+	DECT	SP
+	MOV	ST,*SP			;Save on stack
+	LST	ST
 	JEQ	ADDZ			;AC=AC' => ADDZ
 ;
 ; We need to fix the sign here.
@@ -433,7 +437,7 @@ ADD7:	TMB	R5,0			;Test the sign bit - is it normalised
 
 ADDZ:	CALL	@ZERO
 
-ADD8:	POP	ST			;Get sign from ADD5 Compare
+ADD8:	MOV	*SP+,ST			;Get sign from ADD5 Compare
 	LST	ST
 
 ADD9:	JH	ADD10			;Carry negative from ADD5 above
@@ -521,7 +525,7 @@ FP_RET:	RET
 ;	SP->	|RETURN	|
 ;	SP+2	|R5 	|
 ;	SP+4	|R6	|
-;	SP+6	|R7	|	=>SP->	|RETURN |
+;	SP+6	|R7	|=>	SP->	|RETURN |
 ;
 ;	WP2 is on stack is declared to hold the result and other temporary variables
 ;  	WP2 = SP - 32
@@ -775,8 +779,10 @@ MINUSFPA:
 ;Add AC' to AC..Result in AC and set carry flag if applicable
 ;
 
-ADDAC:  	PUSH	R6'			;Preserve AC'
-	PUSH	R5'
+ADDAC:  	DECT	SP
+	MOV	R6',*SP			;Preserve AC'
+	DECT	SP
+	MOV	R5',*SP
 	CLR	R0
 	INC	R0
 	STST	ST			;Set default flag to no carry
@@ -800,8 +806,8 @@ AAC2:	A	R5',R5
 	JNC	AAC3
 	STST	ST			;Carry to AC has occured i.e. R5
 
-AAC3:	POP	R5'			;Restore AC'
-	POP	R6'
+AAC3:	MOV	*SP+,R5'			;Restore AC'
+	MOV	*SP+,R6'
 	LST	ST			;Load status register with carry/overflow result
 	RET
 
@@ -823,8 +829,10 @@ AAC3:	POP	R5'			;Restore AC'
 ;Subtract AC'from AC. Need to preserve AC'
 ;
 ;
-SUBAC: 	PUSH	R5'
-	PUSH	R6'
+SUBAC: 	DECT	SP
+	MOV	R5',*SP
+	DECT	SP
+	MOV	R6',*SP
 	CLR	R0
 	CB	R7',R7
 	JLE	SUBAC1
@@ -974,15 +982,16 @@ _fpne::	CALL	@DCOMPAR
 ;	SP->	|RETURN1	|
 ;	SP+2	|RETURN2	|
 ;	SP+4	|R5	|
-;	SP+6	|R6	|		SP->	|RETURN1|
-;	SP+8	|R7	|	=>	SP+2	|RETURN2|
+;	SP+6	|R6	|	SP->	|RETURN1|
+;	SP+8	|R7	|=>	SP+2	|RETURN2|
 ;
 DCOMPAR:
-	POP	R4			;Get Compare Function Return Address (RETURN 1)
+	MOV	*SP+,R4			;Get Compare Function Return Address (RETURN 1)
 	CALL	@GETAC'			;Get AC' from Stack
 	CALL	@GETAC			;Get AC from FPA
 	CALL	@EXX			;;Swap them so we have AC - AC'  (Stack - FPA)
-	PUSH	R4			;Restore Return Address 1
+	DECT	SP
+	MOV	R4,*SP			;Restore Return Address 1
 	B	@FPCMP
 ;
 ;FLOATING POINT INTEGER
@@ -1081,7 +1090,8 @@ SQR:	MOVB	@2*R7+1(WP),R4		; Is AC null?
 	SRA	R4			;Halve the exponent -> 0x01
 	AI	R4,EXPN*256			;Comparative value -> 0x81
 	AI	R4,-256*20			; is the half exponent
-	PUSH 	R4			;Save accuracy test
+	DECT	SP
+	MOV 	R4,*SP			;Save accuracy test
 
 SQR1:	CALL	@PUSHAC			;Save the number X
 	CALL	@FPDIV			;Divide by and add
@@ -1153,10 +1163,11 @@ SINC:	CALL	@ACPI			;Put AC'= PI
 	LI	R0,EXPN-20			;1E-7
 	CB	@2*R7+1(WP),R0		;If the number (X) is smaller
 	JL	SIN7			;than 1E-7 then return
-	PUSH	R5			;Is ABS (X) > 2*PI
+	DECT	SP
+	MOV	R5,*SP			;Is ABS (X) > 2*PI
 	TCMB	R5,0			;Clear sign bit
 	CALL	@FPCMP			;Compare AC to AC'
-	POP	R5
+	MOV	*SP+,R5
 	JLE	SIN1A
 	CALL 	@MOD			;Yes => AC=AC MOD 2*PI
 
@@ -1298,7 +1309,7 @@ FLT2:	TMB	R5,0			;If MSB is set then we have finished?
 	JMP	FLT2
 
 FLT3:	MOVB	@2*R4+1(WP),@2*R7+1(WP)  	;Update the exponent
-	POP	ST
+	MOV	*SP+,ST
 	LST	ST			;Was the original integer value negative?
 	JOC	FLT4			;Yes => Return
 	ANDI	R5,CLR_SIGN			;Clear Most Significant sign Bit
@@ -1340,11 +1351,12 @@ RS1:	SRL	R6,1
 ;
 ; Finalise with R7
 ;
-RS2:	PUSH	R0
+RS2:	DECT	SP
+	MOV	R0,*SP
 	MOV	R7,R0			;Save exponent register
 	SRL	R0,1			;Disregard R7 carry into exponent as it will be overwritten
 	MOVB	R0,R7
-	POP	R0
+	MOV	*SP+,R0
 	SOCB	R0,R7
 	RET
 ;
@@ -1597,7 +1609,8 @@ LN01:	LI	R5',03504H  		;AC'=SQR(2)/2
 	LI	R0,256*(EXPN+1)		;Calculate N
 	SB	R0,R4			;LSB holds N
 	MOVB	R0,@2*R7+1(WP)
-	PUSH	R4			;Save N on the stack
+	DECT	SP
+	MOV	R4,*SP			;Save N on the stack
 ;
 ; Calculate Z and U
 ;
@@ -1720,7 +1733,8 @@ EXP:	CALL	@EXX			;Save AC'
 
 	TCMB	R5,0			;Test and clear sign
 	STST	ST
-	PUSH	ST			;Save the orignal value of the sign bit
+	DECT	SP
+	MOV	ST,*SP			;Save the orignal value of the sign bit
 
 	CALL 	@FPDIV			;Calculate Y=X/LN(2)
 	LI	R0,256*(EXPN+8)
@@ -1734,7 +1748,8 @@ EXP:	CALL	@EXX			;Save AC'
 	CALL 	@FIX
 
 	SWPB	R4
-	PUSH 	R4			;Save INT(Y) only MSB is valid, LSB is don't care
+	DECT	SP
+	MOV 	R4,*SP			;Save INT(Y) only MSB is valid, LSB is don't care
 	CALL	@EXX
 
 EXP1:	LI	R8,EXPK-6			;Calculate 2^Z
@@ -1743,15 +1758,15 @@ EXP1:	LI	R8,EXPK-6			;Calculate 2^Z
 	MOV	R8,@CALCS_ADDR		;Save Address
 	CALL	@CALCS
 
-EXP3:	POP	R4			;Fetch 2^INT(Y)
+EXP3:	MOV	*SP+,R4			;Fetch 2^INT(Y)
 	AB	R4,@2*R7+1(WP)		;Calculate 2^Z*2^INT(Y)
 	JNC	EXP6			;If no overflow => EXP6
 
-EXP4:	POP	ST			;Adjust the stack
+EXP4:	MOV	*SP+,ST			;Adjust the stack
 	CALL	@SCF			;Indicate overflow
 EXP5:	B	@ADD_PAC			;Fetch AC'
 
-EXP6:	POP	ST			;Get sign
+EXP6:	MOV	*SP+,ST			;Get sign
 	LST	ST
 	JNE	EXP5     			;Positivt => EXP5
 	CALL	@EXX			;Take the reciprocal
