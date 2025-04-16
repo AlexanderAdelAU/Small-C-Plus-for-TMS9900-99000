@@ -1,1 +1,1 @@
-The floating point library implementation is a retargetting of Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80). The source code is written in assembler and is generally included through linking it with other libraries when building the application.
+The floating point library implementation is a retargetting of Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80). The source code is written in assembler and is generally included through linking it with other libraries when building the application.  
