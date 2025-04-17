@@ -1,1 +1,3 @@
 The floating point library implementation is a retargetting of Anders Hejlsberg's Z80 Floating Point library (FloatM48.z80). The source code is written in assembler and is generally included through linking it with other libraries when building the application.  
+
+In the default library, the floating point implementation is incorporated in the CLIB99 library files using the  cfloat48m.R99 object.   And then the CLIB99.LIB and CLIB99.NDX files are linked into your application.   However if you just want a light version you can link the cfloat48m.R99 file into application independant of CLIB99 for a smaller footprint.
