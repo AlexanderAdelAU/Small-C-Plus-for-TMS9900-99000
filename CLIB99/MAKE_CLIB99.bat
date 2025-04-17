@@ -29,6 +29,9 @@ REM ===============================
  smallcp -C -M strlib\strcpy
  R99 strlib\strcpy SCHCLC
  copy strlib\*.R99
+ smallcp -C -M strlib\strlen
+ R99 strlib\strlen SCHCLC
+ copy strlib\*.R99
 
 REM Clear Read-Only Attributes
 attrib  -r *.LIB
@@ -42,10 +45,10 @@ del *.L$
 del *.N$
 REM Make the library
 REM create lib99f for floating point support and lib99 for non floating point
-lib99 -U clib99 printf itod itou utoi xtoi itox strcpy
-lib99 -U clib99f printf2 itod itou utoi xtoi itox strcpy float cfloatm48
+lib99 -U clib99 printf itod itou utoi xtoi itox strcpy strlen
+lib99 -U clib99f printf2 itod itou utoi xtoi itox strcpy strlen float cfloatm48
 rem lib99 -U strlib99 strcpy
-del *.R99
+REM del *.R99
 
 
 
