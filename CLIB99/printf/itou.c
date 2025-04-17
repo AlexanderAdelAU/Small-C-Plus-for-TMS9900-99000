@@ -8,28 +8,37 @@
  */
 #include "stdio.h"
 itou(nbr, str, sz)
-int nbr ;
-char str[] ;
-int sz ;
+int nbr;
+char str[];
+int sz;
 {
-	int lowbit ;
+	int i;
 
-	if ( sz > 0 )
-		str[--sz] = NULL ;
-	else if ( sz < 0 )
-			sz = -sz ;
-		else
-			while ( str[sz] != NULL )
-				++sz ;
-	while ( sz ) {
-		lowbit = nbr & 1 ;
-		nbr = (nbr >> 1) & 0x7fff ;  /* divide by 2 */
-		str[--sz] = ( (nbr%5) << 1 ) + lowbit + '0' ;
-		if ( (nbr/=5) == 0 )
-			break ;
+	if (sz > 0)
+		str[--sz] = '\0';
+	else if (sz < 0)
+		sz = -sz;
+	else {
+		while (str[sz] != '\0')
+			++sz;
 	}
-	while ( sz )
-		str[--sz] = ' ' ;
-	return str ;
+
+	i = sz;
+
+	if (nbr == 0) {
+		if (i > 0)
+			str[--i] = '0';
+	} else {
+		while (nbr > 0 && i > 0) {
+			str[--i] = (nbr % 10) + '0';
+			nbr /= 10;
+		}
+	}
+
+	while (i > 0)
+		str[--i] = ' ';
+
+	return str;
 }
+
 

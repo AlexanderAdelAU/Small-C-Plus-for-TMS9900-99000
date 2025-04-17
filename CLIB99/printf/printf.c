@@ -101,7 +101,7 @@ _printf(fd, nxtarg)
 			itod(i, str, 7);
 			break;
 		case 'x':
-			itox(i, str, 7);
+			itox(i, str, 5);
 			break;
 		case 'c':
 			str[0] = i;

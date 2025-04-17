@@ -27,7 +27,6 @@ int _Count;
 printf(args)
 	int args; {
 	_String = NULL;
-
 	return (_printf(stdout, _argcnt() + &args-1));
 
 }
@@ -56,13 +55,14 @@ int *nxtarg ;
 
 	double *pd ;
 	int i, width, prec, preclen, len ;
-	char c, right, str[128], pad;
+	char c, right, str[64], pad;
 	char *sptr, *ctl, *cx ;
 
 	_Count = 0 ;
 	ctl = *nxtarg ;
 
 	while ( c = *ctl++ ) {
+
 
 		if (c != '%' ) {
 			_outc(c, fd) ;
@@ -106,7 +106,7 @@ int *nxtarg ;
 		c = *cx++ ;
 		i = *(--nxtarg) ;
 		switch(c) {
-		//putchar(c);
+		//putchar(c); /* debug */
 			case 'd' :
 			case 'i' :
 				itod(i, str, 7) ;

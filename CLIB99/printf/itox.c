@@ -8,32 +8,38 @@
  */
 #include "stdio.h"
 itox(nbr, str, sz)
-int nbr ;
-char str[] ;
-int sz ;
-{
-	int digit, offset ;
+    int nbr; char str[]; int sz; {
+    int digit, offset, i;
 
-	if ( sz > 0 )
-		str[--sz] = NULL ;
+    nbr &= 0xFFFF; /* Mask to 16 bits */
 
-	else if ( sz < 0 )
-		sz = -sz ;
-	else
-		while ( str[sz] != NULL )
-			++sz ;
-	while ( sz ) {
-		digit = nbr & 15 ;
-		nbr = ( nbr >> 4 ) & 0xfff ;
-		if ( digit < 10 )
-			offset = 48 ;
-		else
-			offset = 55 ;
-		str[--sz] = digit + offset ;
-		if ( nbr == 0 )
-			break ;
-	}
-	while ( sz )
-		str[--sz] = ' ' ;
-	return str ;
+    if (sz > 0) {
+        str[--sz] = NULL;
+    } else if (sz < 0) {
+        sz = -sz;
+    } else {
+        while (str[sz] != NULL) {
+            ++sz;
+        }
+    }
+
+    i = sz;
+    if (nbr == 0) {
+        if (i > 0) {
+            str[--i] = '0';
+        }
+    } else {
+        int max_digits = 4; // Only allow 4 hex digits
+        while (nbr && i > 0 && max_digits--) {
+            digit = nbr & 0xF;
+            offset = digit < 10 ? '0' : 'A' - 10;
+            str[--i] = digit + offset;
+            nbr >>= 4;
+        }
+    }
+
+    while (i > 0) {
+        str[--i] = ' ';
+    }
+    return str;
 }
