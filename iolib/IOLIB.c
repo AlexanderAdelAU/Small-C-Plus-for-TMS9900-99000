@@ -2,119 +2,65 @@
  *      iolib
  *
  *  purpose...
- *      Standard C I/O interface for programs running on this system.
+ *      to provide a "standard" interface between C
+ *      programs and the CP/M I/O system.
  *
  *  notes...
  *      Compile using -M option.
  *
- *  architecture...
- *      BDOS lives in segment 0.  Application code may live in any
- *      segment.  All BDOS FCB and DMA operations are routed through
- *      two staging areas in COMMON memory so BDOS always receives
- *      pointers it can reach:
+ *  refactor notes...
+ *      All BDOS FCB and DMA operations are now routed through two
+ *      staging areas in COMMON memory:
  *
- *        _commfcb  (physical addr stored at COMM_FCB = 0xAC)
- *            One shared FCB.  _stage_fcb() copies the per-slot FCB
- *            into common before each BDOS call; _unstage_fcb() copies
- *            it back so BDOS field updates are preserved in the slot.
+ *        _commfcb  (physical addr from *COMM_FCB @ 0xAC)
+ *            - One shared FCB copy, valid only for the duration of
+ *              a single BDOS call.  _stage_fcb() copies the per-slot
+ *              FCB into common before the call; _unstage_fcb() copies
+ *              it back afterward so CP/M's updates (extent, record
+ *              counter, etc.) are preserved in the slot.
  *
- *        _commbuf  (physical addr stored at COMM_BUF = 0xA4)
- *            One shared 512-byte DMA window.  Reads: BDOS fills
- *            _commbuf, _getbuf copies into the per-slot buffer.
- *            Writes: fflush copies from per-slot buffer into _commbuf,
- *            then calls WRSEQ.
+ *        _commbuf  (physical addr from *COMM_BUF @ 0xA4)
+ *            - One shared 128-byte DMA window.  Reads: BDOS fills
+ *              _commbuf, then _getbuf copies it into the per-slot
+ *              local buffer 128 bytes at a time.  Writes: fflush
+ *              copies 128 bytes from the local buffer into _commbuf,
+ *              then asks BDOS to write.
  *
- *  FCB layout (this BDOS, TMS9900 big-endian words)...
- *      Bytes 0-7   filename
- *      Bytes 8-10  extension
- *      Byte  11    FTY  - file type
- *      Bytes 12-13 FSB  - file starting block
- *      Bytes 14-15 FSZ  - file size in sectors
- *      Bytes 16-17 FLA  - file load address
- *      Bytes 18-19 FSZBH- file size in bytes (high word)
- *      Bytes 20-21 LRBL - last record byte length
- *      Bytes 22-23 spare
- *      Bytes 24-25 CBN  - current block number
- *      Bytes 26-27 CRN  - current record number (data begins at CRN=1)
- *      Bytes 28-29 RELB - relative block number
- *      Bytes 30-31 RELR - relative record number
- *      Byte  32    CMLTI- current module load index
- *      Byte  33    NMSECT-module size in sectors
- *      Byte  34    MPAGE- memory page / drive
- *      Byte  35    LBUFCNT - bytes in last buffer (binary EOF support)
- *
- *      No drive byte in bytes 0-31.  Drive selected via SELDSK(14).
- *      All word fields: high byte at even offset, low byte at odd offset.
- *      FCB_xxx defines below point to the low (active) byte of each word.
- *
- *  append mode...
- *      CP/M has no native append.  fopen("a") opens for reading,
- *      reads to EOF so BDOS CRN is positioned at the append point,
- *      decrements CRN by 1 so WRSEQ rewrites the last sector (which
- *      contains existing data up to ^Z plus new appended data), then
- *      switches the slot to MWRITE.  BDOS sequential state is preserved
- *      by staying in the same open - never FCLOSE/FOPEN.
- *
- *  EOF handling...
- *      fclose() pads the last sector with ^Z (0x1A) for text
- *      compatibility and sets LBUFCNT (byte 35) to the exact byte
- *      count of valid data in the last sector.  getc() checks for ^Z
- *      as a fallback for files written without LBUFCNT support.
- *      When BDOS implements LBUFCNT, _getbuf() will use it to limit
- *      the valid byte count without needing ^Z scanning.
- *
- *  known compiler quirk...
- *      _upper() uses two separate comparisons rather than a single
- *      >= because the compiler fails to convert 'a' (the boundary
- *      value) when using c >= 'a'.  Using c < 'a' as the first test
- *      avoids the boundary condition entirely.
- *
- *  known transfer note...
- *      _eof_marker (0x1A) is computed at runtime to avoid a literal
- *      0x1A byte in the COM image, which causes TeraTerm 4 (Windows
- *      text mode XMODEM send) to truncate the transfer at that offset.
- *      TeraTerm 5 or xsend.py open the file in binary mode and do not
- *      have this problem.
+ *      Per-slot data buffers (_ffirst / _flast / _fnext) and the
+ *      per-slot FCB copies (_ffcb[]) stay in local segment memory and
+ *      are never handed directly to BDOS.  This lets iolib live in
+ *      any segment while BDOS remains in segment 0.
  */
 
 #include "stdio.h"
 
-#define NBUFS   5           /* max files open simultaneously            */
-#define LGH     512         /* per-slot data buffer size                */
-#define BUFLGH  (LGH + 36) /* buffer + FCB                             */
-#define SECTOR  512         /* BDOS DMA transfer size                   */
+/* #define INT_OFF */
 
-#define MFREE   11387       /* slot free                                */
-#define MREAD   22489       /* slot open for reading                    */
-#define MWRITE  17325       /* slot open for writing                    */
+#define NBUFS   5
+#define LGH     512
+#define BUFLGH  (LGH + 36)
 
-#define CMDBUF      0xA0    /* pointer to command line buffer           */
-#define CMDSIZ      0xA2    /* command line size                        */
-#define COMM_BUF    0xA4    /* pointer to common DMA staging buffer     */
-#define COMM_FCB    0xAC    /* pointer to common FCB staging area       */
-#define FREEMEM     0xA6    /* pointer to top of heap                   */
-#define MEMLIMIT    0xB0    /* pointer to memory limit                  */
+#define SECTOR  128     /* CP/M physical sector size (DMA window) */
 
-#define NAMSIZ      11      /* FCB name + extension field width         */
-#define EXTSIZ       3      /* extension width                          */
-#define FCBSIZ      36      /* total FCB size                           */
+#define MFREE   11387
+#define MREAD   22489
+#define MWRITE  17325
+#define DIR
 
-/* FCB field offsets - low byte of each big-endian word                 */
-#define FCB_FSB    13   /* file starting block                          */
-#define FCB_FSZ    15   /* file size in sectors                         */
-#define FCB_FLA    17   /* file load address                            */
-#define FCB_LRBL   21   /* last record byte length                      */
-#define FCB_CBN    25   /* current block number                         */
-#define FCB_CRN    27   /* current record number                        */
-#define FCB_RELB   29   /* relative block number                        */
-#define FCB_RELR   31   /* relative record number                       */
-#define FCB_LBUFCNT 35  /* bytes in last buffer                         */
+#define CMDBUF      0xA0
+#define CMDSIZ      0xA2
+#define COMM_BUF    0xA4    /* pointer to common DMA staging buffer  */
+#define COMM_FCB    0xAC    /* pointer to common FCB staging area    */
+#define FREEMEM     0xA6
+#define MEMLIMIT    0xB0
+#define STACKLIMIT  0x0100
+
+#define NAMSIZ  11
+#define FCBSIZ  36
 
 /* ------------------------------------------------------------------ */
 /*  Globals                                                            */
 /* ------------------------------------------------------------------ */
-
-int _eof_marker;    /* = 26 = 0x1A, computed at runtime - see notes    */
 
 int    _argc;
 char **_argv;
@@ -123,38 +69,73 @@ unsigned int _memlimit;
 int   *fmptr;
 int   *limptr;
 int    _current;
+int    _dfltdsk;
 
-int  _ffcb[NBUFS];      /* per-slot: pointer to local FCB              */
-int  _fnext[NBUFS];     /* per-slot: next byte pointer                 */
-int  _ffirst[NBUFS];    /* per-slot: start of data buffer              */
-int  _flast[NBUFS];     /* per-slot: end of valid data in buffer       */
-char *_dfltbuf;         /* default DMA reset target                    */
-int  _fmode[NBUFS];     /* per-slot mode: MFREE/MREAD/MWRITE           */
+int  _ffcb[NBUFS];      /* per-slot: pointer to local FCB copy       */
+int  _fnext[NBUFS];     /* per-slot: next byte pointer               */
+int  _ffirst[NBUFS];    /* per-slot: start of local data buffer      */
+int  _flast[NBUFS];     /* per-slot: end of local data buffer        */
+char *_dfltbuf;         /* default DMA address (reset target)        */
 
-char *_commbuf;         /* physical address of common DMA buffer       */
-char *_commfcb;         /* physical address of common FCB buffer       */
+int  _fmode[NBUFS] = { MFREE, MFREE, MFREE, MFREE, MFREE };
 
-int _argcval;           /* argument count for _setargc in call.a99     */
+/*
+ * Pointers to the two COMMON staging areas.
+ * Resolved once in _main() from the addresses stored at COMM_BUF / COMM_FCB.
+ */
+char *_commbuf;   /* physical address of common DMA buffer  */
+char *_commfcb;   /* physical address of common FCB buffer  */
+
+int _ex, _cr;
+//int _argcval;
 
 /* ------------------------------------------------------------------ */
-/*  Common-memory staging                                              */
+/*  Common-memory staging helpers                                      */
 /* ------------------------------------------------------------------ */
 
-_stage_fcb(index)   int index;
+/*
+ * _stage_fcb - copy per-slot FCB into common FCB before a BDOS call.
+ *              BDOS (in seg 0) can only see _commfcb; it must never
+ *              receive a pointer into local segment memory.
+ */
+_stage_fcb(index)
+    int index;
 {
-    char *src, *dst;  int i;
-    src = _ffcb[index];  dst = _commfcb;  i = FCBSIZ;
-    while (i--) *dst++ = *src++;
+    char *src, *dst;
+    int   i;
+
+    src = _ffcb[index];
+    dst = _commfcb;
+    i   = FCBSIZ;
+    while (i--)
+        *dst++ = *src++;
 }
 
-_unstage_fcb(index)   int index;
+/*
+ * _unstage_fcb - copy common FCB back to the per-slot copy after a
+ *                BDOS call so that CP/M's field updates (extent,
+ *                current record, etc.) are not lost.
+ */
+_unstage_fcb(index)
+    int index;
 {
-    char *src, *dst;  int i;
-    src = _commfcb;  dst = _ffcb[index];  i = FCBSIZ;
-    while (i--) *dst++ = *src++;
+    char *src, *dst;
+    int   i;
+
+    src = _commfcb;
+    dst = _ffcb[index];
+    i   = FCBSIZ;
+    while (i--)
+        *dst++ = *src++;
 }
 
-_cpm_fcb(func, index)   int func, index;
+/*
+ * _cpm_fcb - stage the FCB, call BDOS function 'func', then unstage.
+ *            Use this for every BDOS call that takes an FCB argument.
+ *            Returns the BDOS result.
+ */
+_cpm_fcb(func, index)
+    int func, index;
 {
     int result;
     _stage_fcb(index);
@@ -169,26 +150,22 @@ _cpm_fcb(func, index)   int func, index;
 
 _main()
 {
-    int *p;
-    int  i;
+    fmptr    = FREEMEM;
+    limptr   = MEMLIMIT;
 
-    fmptr  = FREEMEM;
-    limptr = MEMLIMIT;
-
-    p = COMM_FCB;  _commfcb = *p;
-    p = COMM_BUF;  _commbuf = *p;
-    _dfltbuf = COMM_BUF;
+    /* Resolve the physical addresses of the two common staging areas.    */
+    /* Compiler cannot dereference cast literals; use int* intermediates  */
+    /* exactly as fmptr/limptr are used above - assign address, then read.*/
+    {
+        int *p;
+        p        = COMM_FCB;  _commfcb = *p;  /* char* <- *(int*)0xAC   */
+        p        = COMM_BUF;  _commbuf = *p;  /* char* <- *(int*)0xA4   */
+    }
+    _dfltbuf  = COMM_BUF;           /* kept for DMA-reset idiom           */
 
     _heaptop  = *fmptr;
     _memlimit = *limptr;
-
-    /* 0x1A computed at runtime - no literal in binary image            */
-    _eof_marker = 0x1B;
-    _eof_marker--;
-
-    i = NBUFS;
-    while (i--) _fmode[i] = MFREE;
-
+    _dfltdsk  = _cpm(25, 0);
     _setargs();
     main(_argc, _argv);
     exit(0);
@@ -198,11 +175,16 @@ _setargs()
 {
     char *inname, *outname;
     int   count;
-    char *lastc, *mode, *next, *ptr;
+    char *lastc;
+    char *mode;
+    char *next;
+    char *ptr;
     int  *vptr;
 
-    vptr = CMDBUF;  ptr   = *vptr;
-    vptr = CMDSIZ;  count = *vptr;
+    vptr  = CMDBUF;
+    ptr   = *vptr;
+    vptr  = CMDSIZ;
+    count = *vptr;
 
     lastc  = ptr + count - 1;
     *lastc = SPACE;
@@ -213,7 +195,8 @@ _setargs()
     inname   = outname = NULL;
 
     while (++ptr < lastc) {
-        if (*ptr == SPACE) continue;
+        if (*ptr == SPACE)
+            continue;
         if (*ptr == '<') {
             while (*++ptr == SPACE);
             inname = next;
@@ -225,7 +208,8 @@ _setargs()
         } else {
             _argv[_argc++] = next;
         }
-        while (*ptr != SPACE) *next++ = *ptr++;
+        while (*ptr != SPACE)
+            *next++ = *ptr++;
         *next++ = NULL;
     }
     _argv[_argc] = 0;
@@ -248,23 +232,33 @@ _redirect(filename, mode, std)
 /*  Memory management                                                  */
 /* ------------------------------------------------------------------ */
 
-alloc(b)   int b;
+alloc(b)
+    int b;
 {
     if (b & 1) b++;
     _heaptop += b;
-    if (_heaptop > _memlimit) return -1;
+    if (_heaptop > _memlimit)
+        return -1;
     return (_heaptop - b);
 }
 
-free(addr)   int addr;  { _heaptop = addr; }
+free(addr)
+    int addr;
+{
+    _heaptop = addr;
+}
 
-avail()  { return (_memlimit - _heaptop); }
+avail()
+{
+    return (_memlimit - _heaptop);
+}
 
 /* ------------------------------------------------------------------ */
-/*  Error                                                              */
+/*  Error / diagnostics                                                */
 /* ------------------------------------------------------------------ */
 
-err(s)   char *s;
+err(s)
+    char *s;
 {
     int str;
     puts("\nERROR: ");
@@ -277,111 +271,143 @@ err(s)   char *s;
     }
 }
 
+/* debug: dump 'size' bytes from 'fcb' as hex to stdout */
+print_hex(fcb, size)
+    char *fcb; int size;
+{
+    int i;
+    for (i = 0; i < size; i++)
+        printf("%02x ", fcb[i]);
+    printf("\n");
+}
+
 /* ------------------------------------------------------------------ */
 /*  Console I/O                                                        */
 /* ------------------------------------------------------------------ */
 
-getchar()               { return getc(stdin); }
-putchar(c)  char c;     { return (putc(c, stdout)); }
+getchar()
+{
+    return getc(stdin);
+}
 
-puts(buf)   char *buf;
+putchar(c)
+    char c;
+{
+    return (putc(c, stdout));
+}
+
+puts(buf)
+    char *buf;
 {
     char c;
-    while (c = *buf++) putchar(c);
+    while (c = *buf++)
+        putchar(c);
 }
 
 /* ------------------------------------------------------------------ */
-/*  FCB initialisation                                                 */
+/*  FCB helpers                                                        */
 /* ------------------------------------------------------------------ */
 
-_newfcb(name, fcb)   char *name, *fcb;
+/*
+ * _newfcb - initialise a local per-slot FCB from a filename string.
+ *           The FCB pointed to by 'fcb' lives in local segment memory;
+ *           it is only staged to common memory immediately before a
+ *           BDOS call.
+ */
+_newfcb(name, fcb)
+    char *name, *fcb;
 {
     char c;
     int  i;
 
-    /* zero entire FCB, then space-fill name+extension fields           */
-    i = FCBSIZ;
-    while (i) fcb[i--] = 0;
-    for (i = 0; i < NAMSIZ; i++) fcb[i] = ' ';
+    i = NAMSIZ;
+    while (i)
+        fcb[i--] = ' ';
 
-    if (*name == 0) return 0;
+    i = NAMSIZ + 1;
+    while (i < FCBSIZ)
+        fcb[i++] = 0;
 
-    /* skip optional drive prefix e.g. "A:"                             */
-    if (name[1] == ':') name += 2;
-    if (*name == 0) return 0;
-
-    /* copy name into bytes 0-7                                         */
-    i = 0;
-    while ((c = _upper(*name++)) && c != '.') {
-        if (i < NAMSIZ - EXTSIZ) fcb[i++] = c;
+    if (name[1] == ':') {
+        fcb[33] = *name & 0xf;
+        name += 2;
+    } else {
+        fcb[33] = _dfltdsk;
     }
 
-    /* copy extension into bytes 8-10                                   */
+    if (*name == 0)
+        return 0;
+
+    i = 0;
+    while (c = _upper(*name++)) {
+        if (c == '.') break;
+        fcb[i++] = c;
+    }
+
     if (c == '.') {
-        i = NAMSIZ - EXTSIZ;
-        while ((c = _upper(*name++)) && i < NAMSIZ)
+        i = 9;
+        while ((c = _upper(*name++)) && i < NAMSIZ + 1)
             fcb[i++] = c;
     }
 
-    return 1;
+    return (c == 0) ? 1 : 0;
 }
 
 /* ------------------------------------------------------------------ */
 /*  File open / close                                                  */
 /* ------------------------------------------------------------------ */
 
-fopen(name, mode)   char *name, *mode;
+fopen(name, mode)
+    char *name, *mode;
 {
     char  c;
     char *fcb;
-    int   index, unit, r15;
+    int   index, unit;
 
     index = NBUFS;
-    while (index--) { if (_fmode[index] == MFREE) break; }
-    if (index == -1) { err("NO BUFFERS"); exit(-1); }
+    while (index--) {
+        if (_fmode[index] == MFREE)
+            break;
+    }
+    if (index == -1) {
+        err("NO BUFFERS");
+        exit(-1);
+    }
     unit = index + 5;
 
-    if (_ffcb[index] == 0) _ffcb[index] = alloc(BUFLGH);
+    if (_ffcb[index] == 0)
+        _ffcb[index] = alloc(BUFLGH);
+
     _ffirst[index] = _ffcb[index] + FCBSIZ;
     _flast[index]  = _ffirst[index] + LGH;
     fcb            = _ffcb[index];
 
-    if (_newfcb(name, fcb) == 0) return 0;
+    if (_newfcb(name, fcb) == 0)
+        return 0;
 
     c = _upper(*mode);
 
     if (c == 'R' || c == 'A') {
-        r15 = _cpm_fcb(15, index);
-        if (r15 < 0 || r15 == 0xFF) return 0;
+        /* Open for reading via common FCB */
+        if (_cpm_fcb(15, index) < 0)
+            return 0;
 
         _fmode[index] = MREAD;
-        _fnext[index] = _flast[index];  /* force immediate buffer fill  */
+        _fnext[index] = _flast[index];  /* force immediate buffer fill */
 
         if (c == 'A') {
-            while (getc(unit) != -1);   /* read to EOF, BDOS CRN ready  */
-
-            /* CRN (big-endian word, low byte at FCB_CRN=27) points one  */
-            /* past the last sector after reading to EOF.  Decrement by  */
-            /* 1 so WRSEQ rewrites the last sector in place, preserving  */
-            /* existing data up to the ^Z and appending after it.        */
-            if (fcb[FCB_CRN] == 0) {
-                fcb[FCB_CRN]     = 0xFF;
-                fcb[FCB_CRN - 1] = fcb[FCB_CRN - 1] - 1;
-            } else {
-                fcb[FCB_CRN] = fcb[FCB_CRN] - 1;
-            }
-
-            /* back _fnext onto the ^Z so putb overwrites it             */
-            if (_fnext[index] > _ffirst[index])
-                _fnext[index] = _fnext[index] - 1;
-
+            while (getc(unit) != -1);   /* read to EOF */
+            fcb[12] = _ex;
+            _cpm_fcb(15, index);        /* re-open at that extent      */
+            fcb[32] = _cr;
             _fmode[index] = MWRITE;
         }
         return unit;
 
     } else if (c == 'W') {
-        _cpm_fcb(19, index);            /* erase existing file          */
-        if (_cpm_fcb(22, index) < 0) return 0;
+        _cpm_fcb(19, index);            /* delete existing file        */
+        if (_cpm_fcb(22, index) < 0)    /* create new file             */
+            return 0;
         _fmode[index] = MWRITE;
         _fnext[index] = _ffirst[index];
         return unit;
@@ -390,101 +416,130 @@ fopen(name, mode)   char *name, *mode;
     return 0;
 }
 
-fclose(unit)   int unit;
+fclose(unit)
+    int unit;
 {
-    int   index, werror, nbytes;
-    char *end, *ptr, *fcb;
+    int   index, werror;
+    char *end, *ptr;
 
     index = unit - 5;
-    if (_fchk(index) == MREAD) { _fmode[index] = MFREE; return 1; }
+    if (_fchk(index) == MREAD) {
+        _fmode[index] = MFREE;
+        return 1;
+    }
 
-    /* bytes of valid data in the last (possibly partial) sector        */
-    nbytes = _fnext[index] - _ffirst[index];
-    if (nbytes == 0) nbytes = SECTOR;
+    putb(26, unit);
 
-    /* pad remainder with ^Z for text-mode compatibility                */
     ptr = _fnext[index];
     end = _flast[index];
-    while (ptr < end) *ptr++ = _eof_marker;
+    while (ptr < end)
+        *ptr++ = 26;
 
     werror = fflush(unit);
-
-    /* set LBUFCNT so BDOS knows exact byte count in last sector        */
-    fcb = _ffcb[index];
-    fcb[FCB_LBUFCNT] = nbytes;
-
     _fmode[index] = MFREE;
-    if ((_cpm_fcb(16, index) < 0) || werror) return 0;
+
+    if ((_cpm_fcb(16, index) < 0) || werror)
+        return 0;
     return 1;
 }
 
-_fchk(index)   int index;
+_fchk(index)
+    int index;
 {
     int i;
     if ((index >= 0) & (index < NBUFS)) {
         i = _fmode[index];
-        if ((i == MREAD) | (i == MWRITE)) return i;
+        if ((i == MREAD) | (i == MWRITE))
+            return i;
     }
     err("INVALID UNIT NUMBER");
     exit(-1);
 }
 
 /* ------------------------------------------------------------------ */
-/*  Buffered read                                                      */
+/*  Buffered read path                                                 */
+/*                                                                     */
+/*  _getbuf reads SECTOR (128) bytes at a time from BDOS into the     */
+/*  common DMA buffer, then copies each sector into the per-slot      */
+/*  local buffer.  BDOS never sees a local-segment pointer.           */
 /* ------------------------------------------------------------------ */
 
-_getbuf(index)   int index;
+_getbuf(index)
+    int index;
 {
     char *fcb, *dst, *src;
-    int   sectors_read, i, result, lbufcnt;
+    int   sectors_read, i;
 
-    fcb          = _ffcb[index];
+    fcb = _ffcb[index];
+    _ex = fcb[12];
+    _cr = fcb[32];
+
     dst          = _ffirst[index];
     sectors_read = 0;
 
     while (sectors_read < (LGH / SECTOR)) {
-        _stage_fcb(index);
+        /* Point BDOS DMA at the common staging buffer */
         _cpm(26, _commbuf);
-        result = _cpm(20, _commfcb);
+
+        /* Read one sector via staged FCB */
+        _stage_fcb(index);
+        if (_cpm(20, _commfcb)) {   /* non-zero = EOF or error */
+            _unstage_fcb(index);
+            break;
+        }
         _unstage_fcb(index);
-        if (result) break;              /* non-zero = EOF               */
 
-        /* LBUFCNT: if set and < SECTOR, this is the last partial sector */
-        lbufcnt = fcb[FCB_LBUFCNT] & 0xFF;
-        if (lbufcnt == 0 || lbufcnt >= SECTOR) lbufcnt = SECTOR;
+        /* Copy sector from common buffer to local per-slot buffer */
+        src = _commbuf;
+        i   = SECTOR;
+        while (i--)
+            *dst++ = *src++;
 
-        src = _commbuf;  i = lbufcnt;
-        while (i--) *dst++ = *src++;
         sectors_read++;
-
-        if (lbufcnt < SECTOR) break;    /* partial = last sector        */
     }
 
+    /* Restore default DMA pointer */
     _cpm(26, *_dfltbuf);
-    if (sectors_read == 0) return -1;
-    _flast[index] = dst;                /* marks end of valid data      */
+
+    if (sectors_read == 0)
+        return -1;
+
+    _flast[index] = _ffirst[index] + (sectors_read * SECTOR);
     return _ffirst[index];
 }
 
 /* ------------------------------------------------------------------ */
-/*  Buffered write                                                     */
+/*  Buffered write path                                                */
+/*                                                                     */
+/*  fflush writes the local buffer to disk SECTOR bytes at a time,    */
+/*  staging each chunk through the common DMA buffer so BDOS always   */
+/*  receives a pointer into common (segment-0-visible) memory.        */
 /* ------------------------------------------------------------------ */
 
-fflush(unit)   int unit;
+fflush(unit)
+    int unit;
 {
     int   index, i;
     char *next, *going, *src, *dst;
 
     index = unit - 5;
-    if (_fchk(index) != MWRITE) { err("CAN'T FLUSH"); exit(-1); }
+    if (_fchk(index) != MWRITE) {
+        err("CAN\'T FLUSH");
+        exit(-1);
+    }
 
     next  = _fnext[index];
     going = _fnext[index] = _ffirst[index];
 
     while (going < next) {
-        src = going;  dst = _commbuf;  i = SECTOR;
-        while (i--) *dst++ = *src++;
+        /* Copy one sector from local buffer into common staging buffer */
+        src = going;
+        dst = _commbuf;
+        i   = SECTOR;
+        while (i--)
+            *dst++ = *src++;
 
+        /* Set DMA to common buffer and write via staged FCB */
         _cpm(26, _commbuf);
         _stage_fcb(index);
         if (_cpm(21, _commfcb)) {
@@ -493,6 +548,7 @@ fflush(unit)   int unit;
             return -1;
         }
         _unstage_fcb(index);
+
         going += SECTOR;
     }
 
@@ -501,35 +557,46 @@ fflush(unit)   int unit;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Byte-level I/O                                                     */
+/*  Byte-level read / write                                            */
 /* ------------------------------------------------------------------ */
 
-getc(unit)   int unit;
+getc(unit)
+    int unit;
 {
     int c;
     while ((c = getb(unit)) == LF) {}
-    if (c == _eof_marker) return -1;    /* ^Z fallback for old files    */
+    if (c == 26) {
+        if (unit >= 5)
+            _fnext[unit - 5];
+        return -1;
+    }
     return c;
 }
 
-getb(unit)   int unit;
+getb(unit)
+    int unit;
 {
     int   c, index;
     char *next;
 
     if (unit == 0) {
         c = _cpm(1, 0);
-        if (c == '\n') _cpm(2, LF);
+        if (c == '\n')
+            _cpm(2, LF);
         return c;
     }
 
     index = unit - 5;
-    if (_fchk(index) != MREAD) { err("CAN'T READ OUTFILE"); exit(-1); }
+    if (_fchk(index) != MREAD) {
+        err("CAN\'T READ OUTFILE");
+        exit(-1);
+    }
 
     next = _fnext[index];
     if (next == _flast[index]) {
         next = _getbuf(index);
-        if (next == -1) return -1;
+        if (next == -1)
+            return -1;
     }
 
     c = (*next++) & 0xff;
@@ -537,28 +604,39 @@ getb(unit)   int unit;
     return c;
 }
 
-putc(c, unit)   char c; int unit;
+putc(c, unit)
+    char c; int unit;
 {
     int ret;
     ret = putb(c, unit);
-    if (ret == '\n') ret = putb(LF, unit);
+    if (ret == '\n')
+        ret = putb(LF, unit);
     return ret;
 }
 
-putb(c, unit)   char c; int unit;
+putb(c, unit)
+    char c; int unit;
 {
     int   werror, index;
     char *next;
 
-    if (unit == 1) { _cpm(2, c); return c; }
+    if (unit == 1) {
+        _cpm(2, c);
+        return c;
+    }
 
     index = unit - 5;
-    if (_fchk(index) != MWRITE) { err("CAN'T WRITE TO INFILE"); exit(-1); }
+    if (_fchk(index) != MWRITE) {
+        err("CAN\'T WRITE TO INFILE");
+        exit(-1);
+    }
 
     werror = (_fnext[index] == _flast[index]) ? fflush(unit) : 0;
-    next   = _fnext[index];
+
+    next = _fnext[index];
     *next++ = c;
     _fnext[index] = next;
+
     return werror ? werror : c;
 }
 
@@ -566,19 +644,20 @@ putb(c, unit)   char c; int unit;
 /*  Utilities                                                          */
 /* ------------------------------------------------------------------ */
 
-_upper(c)   char c;
+_upper(c)
+    char c;
 {
-    if (c < 'a') return c;
-    if (c > 'z') return c;
-    return c - 32;
+    return (c >= 'a') ? c - 32 : c;
 }
 
-exit(value)   int value;
+exit(value)
+    int value;
 {
     int index;
     index = NBUFS;
     while (index--) {
-        if (_fmode[index] == MWRITE) fclose(index + 5);
+        if (_fmode[index] == MWRITE)
+            fclose(index + 5);
     }
     _shell(value);
 }
