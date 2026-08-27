@@ -38,11 +38,14 @@ statement()
 	TAG_SYMBOL *otag ;
 	int sflag, st, ret ;
 
+/* check for ctrl-C */
+/*
 #ifdef CPM
-	if ( cpm(11,0) & 1 )	/* check for ctrl-C */
+	if (cpm(11,0) & 1 )
 		if ( getchar() == 3 )
 			ccabort() ;
 #endif
+*/
 
 	blanks() ;
 	if ( ch()==0 && eof )
@@ -561,15 +564,16 @@ docont()
  */
 doasm()
 {
-	char *lineptr;			/* 1.06a Fix mismatch in array and pointer declaration */
+	char *lineptr;	/* 1.1.06a Fix mismatch in array and pointer declaration */
+	tspgraph_asm();		/* raw asm may hide call edges from static analysis */
 	cmode=0;			/* mark mode as "asm" */
 	while (1) {
-		preprocess();	/* get and print lines */
+		preprocess();	 /* get and print lines */
 		if ( match("#endasm") || eof )
 			break ;
 		if ( output != NULL ) {
-			lineptr = &line;	/* 1.06a Fix mismatch in array and pointer declaration */
-			if ( fputs(lineptr, output) == -1 ) {	/* 1.06a Fix mismatch in array and pointer declaration */
+			lineptr = &line;
+			if ( fputs(lineptr, output) == EOF ) {
 				fabort() ;
 			}
 		}

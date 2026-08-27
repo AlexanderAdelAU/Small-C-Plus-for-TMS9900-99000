@@ -4,10 +4,9 @@
 
 #define NO		0
 #define YES		1
-
 /*	System wide name size (for symbols)	*/
 
-#define SMALL_C /* - note this is predefined in the setup_sym()  function */
+#define SMALL_C   /* - note this is predefined in the setup_sym()  function */
 
 #ifdef SMALL_C
 	#define NULL_FD 0
@@ -23,8 +22,8 @@
 #endif
 
 
-#define	NAMESIZE 12
-#define NAMEMAX  11
+#define	NAMESIZE 16
+#define NAMEMAX  15
 
 /*	Define the symbol table parameters	*/
 
@@ -40,6 +39,7 @@
 /*	Define symbol table entry format	*/
 
 #define SYMBOL struct symb
+#define CURRENT_SEG 1
 
 SYMBOL {
 	char name[NAMESIZE] ;
@@ -59,6 +59,7 @@ SYMBOL {
 	} offset ;
 	char more ;			/* index of linked entry in dummy_sym */
 	char tag_idx ;		/* index of struct tag in tag table */
+	char segment;		/* segment location */
 } ;
 
 #ifdef SMALL_C
@@ -123,7 +124,7 @@ struct tag_symbol {
 
 #define TAG_SYMBOL struct tag_symbol
 
-#define OPTIMIZE 1		/* turns on peephole optimisation */
+#define OPTIMIZE 0		/* turns on peephole optimisation */
 #ifdef SMALL_C
 #define NULL_TAG 0
 #else
@@ -162,7 +163,7 @@ struct while_tab {
 
 /*	Define the literal pool			*/
 
-#define	LITABSZ 950
+#define	LITABSZ 4096
 #define	LITMAX	LITABSZ-1
 
 /*	Define the input line			*/
@@ -173,12 +174,12 @@ struct while_tab {
 
 /*  Output staging buffer size */
 
-#define STAGESIZE	3072
+#define STAGESIZE	4048
 #define STAGELIMIT	(STAGESIZE-1)
 
 /*	Define the macro (define) pool		*/
 
-#define	MACQSIZE	500
+#define	MACQSIZE	4200
 #define	MACMAX		MACQSIZE-1
 
 /*	Define statement types (tokens)		*/
@@ -200,7 +201,7 @@ struct while_tab {
 
 /* define length of names for assembler */
 
-#define ASMLEN	12
+#define ASMLEN	15
 #ifdef SMALL_C
 #define SYM_CAST
 #define TAG_CAST

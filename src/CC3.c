@@ -241,10 +241,12 @@ int value, more, itag;
 		error(Overflow);
 		return 0;
 	}
-	addsym(glbptr, sname, id, typ, class, more, itag) ;
-	glbptr->offset.i = value ;
-	++glbcnt ;
-	return glbptr;
+    addsym(glbptr, sname, id, typ, class, more, itag);
+    glbptr->offset.i = value;
+    /* Set segment based on whether this is an unresolved external */
+    glbptr->segment = (value == EXTERNAL) ? 0 : CURRENT_SEG;
+    ++glbcnt;
+    return glbptr;
 }
 
 SYMBOL* addloc(sname, id, typ, more, itag)
@@ -285,22 +287,22 @@ int value, storage, more, itag ;
  * insert values into symbol table
  */
 addsym(ptr, sname, id, typ, class, more, itag)
-SYMBOL *ptr ;
-char *sname, id, typ, class ;
-int more, itag ;
+SYMBOL *ptr;
+char *sname, id, typ, class;
+int more, itag;
 {
-	char mtyp;
-	strcpy(ptr->name, sname) ;
-	ptr->ident = id ;
-	ptr->modifier = (typ == UCCHAR || typ == UCINT) ? UNSGND: 0;
-	ptr-> type = typ;
-	if (typ == UCCHAR) ptr-> type = CCHAR;
-	if (typ == UCINT) ptr-> type = CINT;
-	ptr->class = class ;
-	ptr->more = more ;
-	ptr->tag_idx = itag ;
+    char mtyp;
+    strcpy(ptr->name, sname);
+    ptr->ident    = id;
+    ptr->modifier = (typ == UCCHAR || typ == UCINT) ? UNSGND : 0;
+    ptr->type     = typ;
+    if (typ == UCCHAR) ptr->type = CCHAR;
+    if (typ == UCINT)  ptr->type = CINT;
+    ptr->class    = class;
+    ptr->more     = more;
+    ptr->tag_idx  = itag;
+    ptr->segment  = (class == EXTERNAL) ? 0 : CURRENT_SEG;  /* ADD THIS */
 }
-
 /*
  * get integer of length len bytes from address addr
  */
@@ -338,14 +340,14 @@ symname(sname)
 	k = 0;
 #ifdef SMALL_C
 	{
-		char *p;
-		char c;
+		int *p;
+		int c;
 
 		/* this is about as deep as nesting goes, check memory left */
-		p = alloc(1);
+		p = alloc(2);
 		/* &c is top of stack, p is end of heap */
-		if ((k = &c - p) < minavail)
-			minavail = k;
+		k = (int)((char *)&c - (char *)p);
+		minavail = k;
 		free(p);
 	}
 #endif
@@ -415,7 +417,21 @@ pl(str)
 	putchar('\n');
 	while (*str)
 		putchar(*str++);
+	return;
 }
+
+/*
+ * output comment line - if optimise is true comments will be omitted to make
+ * the peephole optimisation easier and more reliable.
+ *
+ */
+oc(ptr,optimise)
+	char *ptr; int optimise; {
+	if (optimise) return;
+	ot(ptr);
+	nl();
+}
+
 
 addwhile(ptr)
 	WHILE_TAB *ptr; {
@@ -744,7 +760,7 @@ defmac(text)
 	char *p;
 
 	/* copy macro name into line buffer */
-	p = line;		/* Point to the first element in the array -  not &line */
+	p = line;
 	while (*text != '=' && *text) {
 		*p++ = *text++;
 	}
@@ -774,11 +790,12 @@ clearstage(before, start)
 		return;
 
 	if (start) {
-#ifdef OPTIMIZE
+#ifdef OPTIMIZE == 1
+
 		peephole(start, output);
 #else
 		if (output != NULL) {
-			if (fputs(start, output) == -1) {
+			if (fputs(start, output) == EOF) {
 				fabort();
 			}
 		} else {
@@ -843,7 +860,7 @@ outstr(ptr)
 		while (*ptr)
 			outstage(*ptr++);
 	} else {
-		if (fputs(ptr, output) == -1) {
+		if (fputs(ptr, output) == EOF) {
 			fabort();
 		}
 	}
@@ -915,6 +932,7 @@ ol(ptr)
 	ot(ptr);
 	nl();
 }
+
 
 ot(ptr)
 	char *ptr; {

@@ -10,11 +10,10 @@
 #include "ccfunc.h"
 
 extern TAG_SYMBOL *tagtab;
-extern SYMBOL *dummy_sym[];
+
 extern char *stagenext;
 extern int lptr;
 extern char line[];
-extern int Zsp;
 
 char Noteq[] = "!=";
 char Plusplus[] = "++";
@@ -54,7 +53,10 @@ skim(opstr, testfunc, dropval, endval, heir, lval)
 			postlabel(droplab);
 			const1(dropval);
 			postlabel(endlab);
-			lval->indirect = lval->ptr_type = lval->is_const = lval->const_val = 0;
+			lval->indirect = 0;
+			lval->ptr_type = 0;
+			lval->is_const = 0;
+			lval->const_val = 0;
 			lval->stage_add = NULL;
 			return 0;
 		} else
@@ -213,7 +215,7 @@ plnge2b(heir, lval, lval2, oper, foper)
 			}
 			/* remove zpush and add int constant to int */
 			clearstage(before1, 0);
-			Zsp = Zsp + 2;
+			inc_Zsp2();
 			addconst(val);
 			dcerror(lval);
 		} else {
@@ -596,6 +598,7 @@ SYMBOL *
 
 deref(lval)
 	LVALUE *lval; {
+	int _idx;
 	/* NB it has already been determind that lval->symbol is non-zero */
 	if (lval->symbol->more == 0) {
 		/* array of/pointer to variable */
@@ -604,7 +607,8 @@ deref(lval)
 		lval->ptr_type = 0; /* flag as not symbol or array */
 	} else {
 		/* array of/pointer to pointer */
-		lval->symbol = dummy_sym[lval->symbol->more];
+		/* was: lval->symbol = dummy_sym[lval->symbol->more]; */
+		lval->symbol = get_dummy(lval->symbol->more);
 		lval->indirect = lval->val_type = CINT;
 		lval->ptr_type = lval->symbol->type;
 		if (lval->symbol->type == STRUCT)
@@ -669,16 +673,21 @@ heira(lval)
 		lval->const_val = 1; /* omit rvalue() on func call */
 		lval->stage_add = 0;
 		return 1; /* dereferenced pointer is lvalue */
-	} else if (cmatch('&')) {
-		if (heira(lval) == 0) {
-			/* OK to take address of struct */
-			if (lval->tagsym == 0 || lval->ptr_type != STRUCT
-					|| (lval->symbol && lval->symbol->ident == ARRAY)) {
-				error("illegal address");
-			}
-			return 0;
-		}
-		lval->ptr_type = lval->symbol->type;
+	}  else if (cmatch('&')) {
+	    if (heira(lval) == 0) {
+	        /* OK to take address of struct */
+	        if (lval->tagsym == 0 || lval->ptr_type != STRUCT
+	                || (lval->symbol && lval->symbol->ident == ARRAY)) {
+	            error("illegal address");
+	        }
+	        return 0;
+	    }
+	    /* GUARD MUST BE HERE - after heira() has returned */
+	    if (lval->symbol == 0) {
+	        error("illegal address");
+	        return 0;
+	    }
+	    lval->ptr_type = lval->symbol->type;
 		lval->val_type = CINT;
 		if (lval->indirect)
 			return 0;
@@ -705,6 +714,7 @@ heirb(lval)
 	char *before1, *start1;
 	char sname[NAMESIZE];
 	int con, val, direct, k;
+	int _idx;
 	SYMBOL *ptr;
 
 	setstage(&before1, &start1);
@@ -731,7 +741,7 @@ heirb(lval)
 				expression(&con, &val);
 				needchar(']');
 				if (con) {
-					Zsp += 2; /* undo push */
+					inc_Zsp2(); /* undo push */
 					cscale(ptr->type, tagtab + ptr->tag_idx, &val);
 					if (lval->storage == STKLOC && ptr->ident == ARRAY) {
 						/* constant offset to array on stack */
@@ -761,13 +771,21 @@ heirb(lval)
 				} else
 					callfunction(ptr);
 				k = lval->is_const = lval->const_val = 0;
+				if (ptr == 0) {
+				    /* function returning value already handled */
+				    k = 0;
+				    continue;
+				}
 				if (ptr->more == 0) {
 					/* function returning variable */
 					lval->val_type = ptr->type;
 					ptr = lval->symbol = 0;
 				} else {
 					/* function returning pointer */
-					ptr = lval->symbol = dummy_sym[ptr->more];
+					/* was: ptr = lval->symbol = dummy_sym[ptr->more]; */
+					ptr = get_dummy(ptr->more);
+					if (ptr == 0) { error("bad pointer type"); return 0; }
+					lval->symbol = ptr;
 					lval->indirect = lval->ptr_type = ptr->type;
 					lval->val_type = CINT;
 					if (ptr->type == STRUCT) {
@@ -775,6 +793,7 @@ heirb(lval)
 					}
 				}
 				lval->storage = STATIK;
+				ptr = lval->symbol;
 			} else if ((direct = cmatch('.')) || match("->")) {
 				if (lval->tagsym == 0) {
 					error("can't take member");

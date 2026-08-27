@@ -2,6 +2,8 @@
  * define types of various functions
  */
 
+
+
 #ifndef SMALL_C
 extern void exit() ;
 extern char *malloc() ;

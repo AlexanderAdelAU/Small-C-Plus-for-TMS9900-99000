@@ -9,7 +9,7 @@
 #include "cclvalue.h"
 
 extern char Banner[], Author[], Version[], Filename[];
-extern int litlab, Zsp, mainflg, trace;
+extern int litlab, Zsp, mainflg;
 extern SYMBOL *symtab;
 
 /* Begin a comment line for the assembler */
@@ -43,6 +43,7 @@ header() {
 	ol("R4\tEQU 4");
 	ol("R8\tEQU 8");
 	ol("SL\tEQU 9");
+	ol("R9\tEQU 9");
 	ol("SP\tEQU 10");
 	ol("WP\tEQU 13");
 	ol("R11\tEQU 11"); /* R11 is used by BL as the return address and needs to be saved */
@@ -51,6 +52,7 @@ header() {
 	ol("\tDXOP RET,7");
 	ol("\tDXOP WHEX,10");
 	ol("\tDXOP WRITE,12    ;WRITE CHAR IN MSB ");
+	ol("\tDXOP	MESG,14");
 	ol(
 			"\tDXOP DEBUG,15    ;TRACE THE PRECEDING INSTRUCTION, PC,ST and REGISTERS ");
 	nl();
@@ -71,15 +73,17 @@ header() {
 
 	} else {
 		/* not main program, output module name */
-		/*	ot("module "); */
+		/*	ot("module NAME"); */
 		ot("\tNAM ");
 		if (Filename[1] == ':')
-			outstr(&Filename[2]);
+			outstr(Filename + 2);
 		else
 			outstr(Filename);
 		nl();
-		ol(
-				"\tNOP; Required to terminate link chain with non zero for global variables");
+/* DEPRECATED
+		ol(	"\tNOP; Required to terminate link chain with non zero for global variables");
+		ot("\tNOP ");
+*/
 	}
 }
 
@@ -392,35 +396,37 @@ swapstk() {
 	ol("\tMOV R0,*SP");
 }
 
-/* process switch statement - return address points to switch table*/
+/* process switch statement - return address points to switch table */
 sw() {
+	tspgraph_call_raw("CALL", "_ccswitc##");
 	ol("\tCALL @_ccswitc##"); /* Must use call for switch for return address*/
 }
 
 /* Call the specified subroutine name */
-zcall(sname)
-	char *sname; {
+zcall(sym)
+	char *sym; {
+	tspgraph_call_sym("CALL", sym);
 	ol(";zcall()");
 	ot("\tCALL @");
-	outname(sname);
+	outname(sym);
 	nl();
 }
 
-/* Call a run-time library routine - Becasue theY don't call any other
+/* Call a run-time library routine - Because they don't call any other
  * routines we can use BL and return using B *R11
  */
 callrts(sname)
 	char *sname; {
+	tspgraph_call_raw("BL", sname);
 	ot("\tBL @");
 	outstr(sname);
 	nl();
 }
 
-/* Call a floating point ibrary routine - Separate routine as there may be
- * call optimisations in future, e.g. routines we can use BL etc
- */
+/* Call a floating point library routine */
 fpcall(sname)
 	char *sname; {
+	tspgraph_call_raw("CALL", sname);
 	ol(";fpcall()");
 	ot("\tCALL @");
 	outstr(sname);
@@ -430,7 +436,6 @@ fpcall(sname)
 /* Return from subroutine */
 zret() {
 	ol("\tRET");
-
 }
 
 /*
@@ -439,6 +444,7 @@ zret() {
  */
 callstk(n)
 	int n; {
+	tspgraph_icall();
 	ol(";callstk()");
 	loadargc(n);
 	ol("\tCALL *R4");
@@ -1012,9 +1018,10 @@ entry(name)
 
 strlen_newline(str, start)
 	char *str;int start; {
-	int count = 0;
+	int count;
 	int i;
 
+	count = 0;
 	/* Check if starting point is within the string */
 	if (str[start] == '\0') {
 		return 0; /* Return 0 if start is out of bounds */
@@ -1032,288 +1039,242 @@ strlen_newline(str, start)
 }
 
 /*
- * Peephole optimiser.  To be completed.
+ * Peephole optimiser.
+ *
+ * Operates on the NUL-terminated staging buffer built for one statement.
+ * Matching is COMMENT-TRANSPARENT: the descriptive codegen comment lines
+ * (those beginning with ';') are copied straight through to the output but
+ * are skipped over while an idiom is being matched, so the comments that
+ * document the generated code no longer stop the optimiser from firing.
+ *
+ * Labels, blank lines and assembler directives (anything that starts in
+ * column 0 and is not a comment) act as BARRIERS and are never crossed,
+ * because they may be branch targets.  Every rule below only ever folds a
+ * fixed instruction idiom into a shorter, equivalent one; nothing is
+ * matched across a CALL, a branch, a label, or any stack adjustment other
+ * than the push/pop pair a rule is explicitly removing.
  */
+
+/* advance to the first character of the line following p */
+char *pp_eol(p)
+	char *p; {
+	while (*p && *p != '\n')
+		++p;
+	if (*p)
+		++p;
+	return p;
+}
+
+/* skip a run of comment lines; return the first line that is not a comment
+   (an instruction, a barrier, or the end of the buffer) */
+char *pp_skipcom(p)
+	char *p; {
+	while (*p == ';')
+		p = pp_eol(p);
+	return p;
+}
+
+/* copy the single line at p (up to and including its newline) to the output
+   and return a pointer to the next line */
+char *pp_copyline(p, output)
+	char *p; int output; {
+	char *e;
+	e = pp_eol(p);
+	while (p < e)
+		cout(*p++, output);
+	return p;
+}
+
+/* p points at a "\tLI R4,<n>\n" line.  Emit  pre + <n> + post , isolating
+   the numeric field with a temporary NUL so ot() can be reused. */
+pp_linimm(p, pre, post)
+	char *p, *pre, *post; {
+	char *n, *e, save;
+	n = p + 7;			/* first char after "\tLI R4," */
+	e = n;
+	while (*e && *e != '\n')
+		++e;
+	save = *e;
+	*e = '\0';
+	ot(pre);
+	ot(n);
+	ot(post);
+	*e = save;
+}
+
+/* true if the line at p is a safe "middle" for push/pop elimination:
+   an instruction that loads R4 without touching R3, SP or the stack.
+   Restricted to LI R4,n / CLR R4 / SETO R4 / MOV @<sym>,R4 (absolute, i.e.
+   no indexed "(...)" operand), so we never fold across a CALL, a branch,
+   or any SP-relative addressing. */
+pp_safemid(p)
+	char *p; {
+	char *q;
+	if (streq(p, "\tLI R4,"))
+		return 1;
+	if (streq(p, "\tCLR R4\n"))
+		return 1;
+	if (streq(p, "\tSETO R4\n"))
+		return 1;
+	if (streq(p, "\tMOV @")) {
+		q = p + 6;
+		if (!alpha(*q))		/* must be a symbol, not @n(SP)/@n(WP) */
+			return 0;
+		while (*q && *q != '\n') {
+			if (*q == '(')	/* any indexed operand -> reject */
+				return 0;
+			++q;
+		}
+		if (streq(q - 3, ",R4\n"))
+			return 1;
+	}
+	return 0;
+}
+
+/* Comment-transparent comparison fold.  If the idiom
+     BL @_ccXX## / MOV R4,R4 / (JNE|JEQ) $+6
+   begins at ptr - with comment lines between the three instructions
+   ignored - emit the equivalent inline compare and return a pointer to
+   the first line after the idiom.  Otherwise return 0.  The input jump is
+   JNE $+6 in every case except the alternate _cceq form (JEQ $+6). */
+char *pp_compare(ptr, output)
+	char *ptr; int output; {
+	char *p1, *p2, *rep;
+
+	if (!streq(ptr, "\tBL @_cc"))
+		return 0;
+	p1 = pp_skipcom(pp_eol(ptr));
+	if (!streq(p1, "\tMOV R4,R4\n"))
+		return 0;
+	p2 = pp_skipcom(pp_eol(p1));
+
+	rep = 0;
+	if (streq(p2, "\tJNE $+6\n")) {
+		if (streq(ptr, "\tBL @_ccuge##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJHE $+6\n";
+		else if (streq(ptr, "\tBL @_ccult##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJL $+6\n";
+		else if (streq(ptr, "\tBL @_ccugt##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJH $+6\n";
+		else if (streq(ptr, "\tBL @_ccule##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJLE $+6\n";
+		else if (streq(ptr, "\tBL @_cceq##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJEQ $+6\n";
+		else if (streq(ptr, "\tBL @_ccne##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJNE $+6\n";
+		else if (streq(ptr, "\tBL @_ccgt##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJGT $+6\n";
+		else if (streq(ptr, "\tBL @_cclt##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJLT $+6\n";
+		else if (streq(ptr, "\tBL @_ccge##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJGT $+8\n\tJEQ $+6\n";
+		else if (streq(ptr, "\tBL @_ccle##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJLT $+8\n\tJEQ $+6\n";
+	} else if (streq(p2, "\tJEQ $+6\n")) {
+		if (streq(ptr, "\tBL @_cceq##\n"))
+			rep = "\tC R3,R4 ;optimised\n\tJNE $+6\n";
+	}
+	if (rep == 0)
+		return 0;
+	ot(rep);
+	return pp_eol(p2);
+}
+
+
 peephole(ptr, output)
-	char *ptr;int output; {
-	char *tptr, *str;
-	int count1, count2, count3, i;
+	char *ptr; int output; {
+	char *p1, *p2, *p3;
+	int n;
 
 	while (*ptr) {
 
-		/* optimise
-		 MOVB *R4,R4
-		 SRA R4,8
-		 DECT SP
-		 MOV R4,*SP
-		 LI R4,32
-		 MOV *SP+,R3
-
-		 This can be optimised to
-		 MOVB *R4,R3
-		 SRA R3,8
-		 LI R4,32
-		 */
-		tptr = ptr;
-		if (count1 = streq(tptr,
-				"\tMOVB *R4,R4\n\tSRA R4,8\n\tDECT SP\n\tMOV R4,*SP\n")) {
-			if (streq(tptr + count1, "\tLI R4,")) {
-				count2 = strlen_newline(tptr + count1, 0); /* Get length of the LI R4,xxx line */
-				if (streq(tptr + count1 + count2 + 1, "\tMOV *SP+,R3\n")) {
-					*(tptr + count1 + count2) = '\0'; /* mark the end of LI R4 string with a null */
-					ot("\tMOVB *R4,R3;optimised\n");
-					ot("\tSRA R3,8\n");
-					ot(tptr + count1);
-					ptr += count1 + count2 + 13; /* this is the count of the code to be replaced */
-					continue;
-				}
-			}
-		}
-		/*
-		 * ;indirect ccgint
-		 MOV *R4,R4
-		 DECT SP
-		 MOV R4,*SP
-		 LI R4,4
-		 MOV *SP+,R3
-
-		 This can be optimised to
-		 MOVB *R4,R3
-		 LI R4,4
-		 */
-		tptr = ptr;
-		if (count1 = streq(tptr, "\tMOV *R4,R4\n\tDECT SP\n\tMOV R4,*SP\n")) {
-			if (streq(tptr + count1, "\tLI R4,")) {
-				count2 = strlen_newline(tptr + count1, 0); /* Get length of the LI R4,xxx line */
-				if (streq(tptr + count1 + count2 + 1, "\tMOV *SP+,R3\n")) {
-					*(tptr + count1 + count2) = '\0'; /* mark the end of LI R4 string with a null */
-					ot("\tMOV *R4,R3;optimised\n");
-					ot(tptr + count1);
-					ptr += count1 + count2 + 13; /* this is the count of the code to be replaced */
-					continue;
-				}
-			}
-		}
-		/*
-		 LI R4,4
-		 A SP,R4
-		 DECT SP
-		 MOV R4,*SP
-		 CLR R4
-		 MOV *SP+,R3
-		 ;putstk - int
-		 MOV R4,*R3
-
-		 to
-		 MOV @4(SP),R3
-		 CLR R4
-		 */
-		tptr = ptr;
-		if (count1 = streq(tptr, "\t-ABIGUITY IN CODE-LI R4,")) {
-			count2 = strlen_newline(tptr + count1, 0);
-			if (count3 =
-					streq(tptr + count1 + count2 + 1,
-							"\tA SP,R4\n\tDECT SP\n\tMOV R4,*SP\n\tCLR R4\n\tMOV *SP+,R3\n")) {
-				/*	*tptr = '\0'; /* null the li r4,nnnn line */
-				*(tptr + count1 + count2) = '\0'; /* mark the end of LI R4 string with a null */
-				ot("\tMOV @");
-				ot(tptr + count1);
-				ot("(SP),R3;optimised.2\n");
-				ot("\tCLR R4\n");
-				ptr = tptr + count1 + count2 + count3 + 1;
-			}
-		}
-		/*
-		 * The unsigned compare optimisation reduces code by 4 bytes
-		 * and removes a BL operation
-		 */
-
-		if (streq(ptr, "\tBL @_ccuge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJHE $+6\n");
-			ptr += 34;
+		/* comment line: transparent to matching, but preserved */
+		if (*ptr == ';') {
+			ptr = pp_copyline(ptr, output);
 			continue;
 		}
-		if (streq(ptr, "\tBL @_ccult##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJL $+6\n");
-			ptr += 34;
-			continue;
-		}
-		if (streq(ptr, "\tBL @_ccugt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJH $+6\n");
-			ptr += 34;
-			continue;
-		}
-		if (streq(ptr, "\tBL @_ccule##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJLE $+6\n");
-			ptr += 34;
-			continue;
-		}
-		/*
-		 *  BL @_cceq##
-		 MOV R4,R4
-		 JNE $+6
-		 */
-		/*TEST IF R3 = R4*/
-		if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4;optimised\n");
-			ot("\tJEQ $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/*
-		 *  BL @_cceq##
-		 MOV R4,R4
-		 JEQ $+6
-		 */
-		/*TEST IF R3 = R4* - Alternate test */
-		if (streq(ptr, "\tBL @_cceq##\n\tMOV R4,R4\n\tJEQ $+6\n")) {
-			ot("\tC R3,R4;optimised\n");
-			ot("\tJNE $+6\n");
-			ptr += 33;
-			continue;
-		}
-
-		/*  TEST IF R3 != R4 */
-		if (streq(ptr, "\tBL @_ccne##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJNE $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/*TEST IF R3 > R4  (SIGNED)*/
-		if (streq(ptr, "\tBL @_ccgt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJGT $+6\n");
-			ptr += 33;
-			continue;
-		}
-
-		/*TEST IF R3 < R4  (SIGNED)*/
-		if (streq(ptr, "\tBL @_cclt##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-			ot("\tC R3,R4\n");
-			ot("\tJLT $+6\n");
-			ptr += 33;
-			continue;
-		}
-		/* TEST IF R3 >= R4 (SIGNED) */
-		if (streq(ptr, "\tBL @_ccge##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-		    ot("\tC R3,R4\n");
-		    ot("\tJGT $+8\n");      /* jump if R3 > R4 */
-		    ot("\tJEQ $+6\n");      /* jump if R3 == R4 */
-		    ptr += 33;
-		    continue;
-		}
-		/* TEST IF R3 <= R4 (SIGNED) */
-		if (streq(ptr, "\tBL @_ccle##\n\tMOV R4,R4\n\tJNE $+6\n")) {
-		    ot("\tC R3,R4\n");
-		    ot("\tJLT $+8\n");      /* jump if R3 < R4 */
-		    ot("\tJEQ $+6\n");      /* jump if R3 == R4 */
-		    ptr += 33;
-		    continue;
-		}
-		/***************************************************/
-		/**********old optimisation code that is not used  */
-		/***************************************************/
 
 		/*
-		 *
-		 LI R4,8
-		 A SP,R4
-		 DECT SP
-		 MOV R4,*SP
-		 CLR R4
-		 MOV *SP+,R3
-		 to
-		 MOV @8(SP),R3
-		 CLR R4
+		 * Load of a local:
+		 *   LI R4,n / A SP,R4 / MOV  *R4,R4  ->  MOV  @n(SP),R4
+		 *   LI R4,n / A SP,R4 / MOVB *R4,R4  ->  MOVB @n(SP),R4
+		 * (a trailing "SRA R4,8" for a signed char simply flows on).
 		 */
-
 		if (streq(ptr, "\tLI R4,")) {
-			tptr = ptr + 7;
-			while (*tptr != '\n')
-				++tptr;
-			if (streq(tptr + 1, "\tA SP,R4\n\tMOV *R4,R4")) {
-				*tptr++ = '\0'; /* null the li r4,nnnn line */
-				if (streq(tptr + 21, "\tMOV R4,R3;;"))
-				/*  	{ot(" MOV  @");ot(ptr+7);ot("(SP),R3");nl();ot(" MOV *R3,R3");nl();ptr=tptr+34;} */
-				{
-					ot("\tMOV  @");
-					ot(ptr + 7);
-					ot("(SP),R3 ;optimised.2");
-					nl();
-					nl();
-					ptr = tptr + 31;
-				} else {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4 ;optimised.3");
-					nl();
-					ptr = tptr + 36;
+			p1 = pp_skipcom(pp_eol(ptr));
+			if (streq(p1, "\tA SP,R4\n")) {
+				p2 = pp_skipcom(pp_eol(p1));
+				if (streq(p2, "\tMOV *R4,R4\n")) {
+					pp_linimm(ptr, "\tMOV @", "(SP),R4 ;optimised load\n");
+					ptr = pp_eol(p2);
+					continue;
 				}
-			} else if (streq(tptr + 1, "\tAzz SP,R4\n\tMOVB *R4,R4")) {
-				*tptr++ = '\0';
-				if (streq(tptr + 22, " MOVB R4,R3")) {
-					ot("\tMOVB @");
-					ot(ptr + 7);
-					ot("(SP),R3");
-					nl();
-					ot(" MOVB *R3,R3");
-					nl();
-					ptr = tptr + 34;
-				} else {
-					ot("\tMOVB @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ptr = tptr + 22;
+				if (streq(p2, "\tMOVB *R4,R4\n")) {
+					pp_linimm(ptr, "\tMOVB @", "(SP),R4 ;optimised load\n");
+					ptr = pp_eol(p2);
+					continue;
 				}
 			}
-			/* else cout(*ptr++,output); */
-			else if (streq(tptr + 1, "\tA ZZZSP,R4\n\tPUSH R4")) {
-				*tptr++ = '\0';
-				if (streq(tptr + 18, "\tMOV *R4,R4")) {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ot("\tPUSH R4 ;optimised");
-					nl();
-					ptr = tptr + 34;
-				} else {
-					ot("\tMOV @");
-					ot(ptr + 7);
-					ot("(SP),R4");
-					nl();
-					ptr = tptr + 22;
-				}
-			} else if (streq(tptr + 1, "\tZZZMOV *SP+,R4")) {
-				*tptr++ = '\0';
-				ol("\tMOV *SP+,R4 ;optimised 7");
-				ptr = ptr + 27;
-			} else
-				cout(*ptr++, output);
-		} else if (streq(ptr, "\tMOV SP,R4\n\tMOV *R4,R4")) {
-			if (streq(ptr + 23, "\tMOV R4,R3;;")) {
-				ol("\tMOV *SP,R3  ;optimised 3");
-				ptr = ptr + 37;
-			} else {
-				ol("\tMOV *SP,R4  ;optimised 4");
-				ptr = ptr + 24;
-			}
-		} else if (streq(ptr,
-				"\tMOV *SP+,R3\n\tA R3,R4\n\tDECT SP\n\tMOV R4,*SP")) {
-			ol("\tA R4,*SP ; optimised 5");
-			ptr = ptr + 43;
 		}
-		if (streq(ptr, "\tMOV *SP+,R3\n\tA R3,R4")) {
-			ol("\tA *SP+,R4; optimised 6");
-			ptr += 22;
-		} else
-			cout(*ptr++, output);
+
+		/*
+		 * Load of the offset-0 local:
+		 *   MOV SP,R4 / MOV  *R4,R4  ->  MOV  *SP,R4
+		 *   MOV SP,R4 / MOVB *R4,R4  ->  MOVB *SP,R4
+		 */
+		if (streq(ptr, "\tMOV SP,R4\n")) {
+			p1 = pp_skipcom(pp_eol(ptr));
+			if (streq(p1, "\tMOV *R4,R4\n")) {
+				ot("\tMOV *SP,R4 ;optimised load\n");
+				ptr = pp_eol(p1);
+				continue;
+			}
+			if (streq(p1, "\tMOVB *R4,R4\n")) {
+				ot("\tMOVB *SP,R4 ;optimised load\n");
+				ptr = pp_eol(p1);
+				continue;
+			}
+		}
+
+		/*
+		 * Push / pop round-trip elimination:
+		 *   DECT SP / MOV R4,*SP / <M> / MOV *SP+,R3   ->   MOV R4,R3 / <M>
+		 * where <M> is a safe R4-only middle (see pp_safemid).  The pushed
+		 * value (R4) is copied straight to R3; <M> then reloads R4.  Result
+		 * R3=first operand, R4=second operand, SP unchanged - identical to
+		 * the stacked version, minus three instructions.
+		 */
+		if (streq(ptr, "\tDECT SP\n")) {
+			p1 = pp_skipcom(pp_eol(ptr));
+			if (streq(p1, "\tMOV R4,*SP\n")) {
+				p2 = pp_skipcom(pp_eol(p1));
+				if (pp_safemid(p2)) {
+					p3 = pp_skipcom(pp_eol(p2));
+					if (streq(p3, "\tMOV *SP+,R3\n")) {
+						ot("\tMOV R4,R3 ;optimised push/pop\n");
+						pp_copyline(p2, output);
+						ptr = pp_eol(p3);
+						continue;
+					}
+				}
+			}
+		}
+
+		/*
+		 * Comparison folds.  The runtime helper call
+		 *     BL @_ccXX## / MOV R4,R4 / Jcc $+6
+		 * is replaced by an inline compare, saving a BL and four bytes.
+		 * Matching is comment-transparent (pp_compare), so a comment such
+		 * as ;eq0(label) sitting between the lines no longer blocks it.
+		 */
+		p3 = pp_compare(ptr, output);
+		if (p3) {
+			ptr = p3;
+			continue;
+		}
+
+		/* nothing matched: copy this one line through unchanged */
+		ptr = pp_copyline(ptr, output);
 	}
 }
 
