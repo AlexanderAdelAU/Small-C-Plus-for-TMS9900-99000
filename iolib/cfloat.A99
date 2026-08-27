@@ -1,0 +1,706 @@
+;
+;   TMS9900/99105	FLOATING POINT IMPLEMENTATION
+;	WRITTEN BY 
+;	ALEX CAMERON
+;	9TH SEPTEMBER, 2010
+;
+;Some taken from section 4.7 of How to write great code by Randall Hyde
+;
+;	FOLLOWING OPERATIONS ARE AVAILABLE AS OF TODAY
+;	_fadd,_fsub,_ifloat (convert 16 integer to float)
+;
+R0	EQU	0
+R1	EQU	1
+R2	EQU	2
+R3	EQU	3
+R4	EQU	4
+R5	EQU	5
+R6	EQU	6
+R7	EQU	7
+R8	EQU	8
+SL	EQU	9
+SP	EQU	10
+R11	EQU	11
+WP	EQU	13
+;
+	DXOP CALL,6
+	DXOP RET,7
+	DXOP PUSH,8
+	DXOP POP,9
+	DXOP WHEX,10
+;	
+;masks[24]
+;
+; Note masks are 24 bits long
+MASKS	BYTE	0,0,0
+		BYTE	0,0,1
+		BYTE	0,0,7
+		BYTE	0,0,0FH,
+		BYTE	0,0,01FH,
+		BYTE	0,0,03FH,
+		BYTE	0,0,07FH
+		BYTE	0,0,0FFH
+		BYTE	0,1,0FFH
+		BYTE	0,3,0FFH
+		BYTE	0,7,0FFH
+		BYTE	0,0FH,0FFH
+		BYTE	0,01FH,0FFH
+		BYTE	0,03FH,0FFH,
+		BYTE	0,07FH,0FFH
+		BYTE 	0,0FFH,0FFH
+		BYTE	1,0FFH,0FFH
+		BYTE	3,0FFH,0FFH
+		BYTE	7,0FFH,0FFH
+		BYTE	0FH,0FFH,0FFH
+		BYTE	01FH,0FFH,0FFH
+		BYTE	03FH,0FFH,0FFH
+		BYTE	07FH,0FFH,0FFH
+		
+HOMASKS BYTE	0,0,0
+		BYTE	0,0,1
+		BYTE	0,0,2
+		BYTE	0,0,4
+		BYTE	0,0,010H
+		BYTE	0,0,020H
+		BYTE	0,0,040H
+		BYTE	0,0,080H
+		BYTE	0,1,0
+		BYTE	0,2,0
+		BYTE	0,4,0
+		BYTE	0,8,0
+		BYTE	0,010H,0
+		BYTE	0,020H,0
+		BYTE	0,040H,0
+		BYTE	0,080H,0
+		BYTE	1,0,0
+		BYTE	2,0,0
+		BYTE	4,0,0
+		BYTE	8,0,0
+		BYTE	010H,0,0
+		BYTE	020H,0,0
+		BYTE	040H,0,0
+		EVEN
+		;
+;
+;
+; IEEE 754 FLOATING POINT FORMAT
+;
+; Not used	Two's Exponent	Mantissa
+; SEEEEEEE	EMMMMMMM	MMMMMMMM	MMMMMMMM  
+;     N			N+1		   N+2       N=3       
+;    	       
+;       \ R5 /                \R6/				  
+;
+; PACKED FORMAT HERE
+;FAR = FLOATING POINT ACCUMULATOR RIGHT
+;FAL = FLOATING POINT ACCUMULATOR LEFT
+;FAD = FLOATING POINT ACCUMULATOR DESTINATION
+;FAL EQU FAD
+
+RFPA:	BSS		4	;stored as N+3,N+2,N+1,N
+LFPA:	BSS		4	;stored as N+3,N+2,N+1,N
+DFPA		EQU		LFPA
+;
+;TEMP STORAGE FOR EXTRACTED SIGN, EXP AND MANTISSA
+;
+LSIGN:	BYTE	0	;ZERO = POSITIVE, NON ZERO = NEGATIVE
+RSIGN:	BYTE	0	;ZERO = POSITIVE, NON ZERO = NEGATIVE
+DSIGN:	EQU		LSIGN
+;
+LEXP	BYTE	0
+DEXP	EQU		LEXP
+REXP	BYTE	0
+LMAN	BYTE	0,0,0  ;MSB IS BYTE 0, LSB is BYTE 2
+RMAN	BYTE	0,0,0
+DMAN	EQU		LMAN
+SHIFTOUT BYTE	0,0,0		;HOLDS THE VALUE SHIFTED OUT
+
+		EVEN
+;
+; LOAD INTEGER FPN AT ADDRESS IN R4 NTO ACCUMULATOR
+;
+_fload::
+			LI		R0,LFPA
+			MOV	 	*R4+,*R0+
+			MOV	 	*R4,*R0
+			RET
+		
+;
+;	STORE FROM FA INTO ADDRESS IN R4 
+;
+_fstore::
+			LI		R0,LFPA
+			MOV		*R0+,*R4+
+			MOV		*R0,*R4
+			RET
+;	
+;	load FA from (R4) and push FA (fall through to _fpush
+;
+_fldpsh::
+			LI		R0,LFPA
+			MOV		*R4+,*R0+
+			MOV		*R4,*R0
+;
+;	push the floating point accumulator
+;	(preserving return address)
+;
+_fpush:: 
+			POP		R4			;GRAB RETURN ADDRESS
+			DECT	SP
+			MOV 	@LFPA+2, *SP
+			DECT	SP
+			MOV 	@LFPA,*SP
+			PUSH	R4			;PUSH RETURN ADDRESS AND THEN RETURN
+			RET
+;
+;
+;
+;	push floating point accumulator
+;	(preserve return address and next stacked word)
+;
+;
+_fpush2:: 	POP		R4			;GRAB RETURN ADDRESS
+			POP		R2			;SAVE THE NEXT WORD
+			DECT	SP
+			MOV 	@LFPA+2,*SP
+			DECT	SP
+			MOV 	@LFPA,@-2(SP)
+			PUSH	R2			;PUSH BACK THE ORIGINAL WORD
+			PUSH	R4			;PUSH RETURN ADDRESS AND THEN RETURN
+			RET
+			
+;			COULD DO IT THIS WAY
+
+			
+			MOV		*SP,@-4(SP)
+			MOV		@2(SP),@-2(SP)
+			MOV 	@LFPA+2,*SP
+			MOV 	@LFPA,@2(SP)
+			DECT	SP
+			DECT 	SP				;SP NOW POINTS TO RETURN ADDRESS
+			RET
+			
+
+;
+;CONVERT 16 BIT INTEGER IN R4 TO FP and PLACE IN DFPA.
+;
+; CAPTURE IN R3 and THEN COPY TO R5/R6
+;
+_ifloat::	
+			CLR		R6
+			MOV		R4,R5
+			LI		R0,07FFFH		; ISOLATE SIGN BIT FOR SZCB (NOTE INVERTED)
+			MOVB	R5,R1 			;fetch MSB
+			SZCB	R0,R1			;AND SIGN BIT
+			MOVB	R1,@DSIGN		;Non zero is negative, zero is positive
+			JEQ		FL4				;c => nonnegative number
+			NEG		R5				;get positive number into R4
+FL4:		MOV		R5,R0
+			JEQ		IZERO
+			LI		R1,(127+15) 	;R1 will track exp. 0 is 127, -127 and 128 are reserved
+									;SET EXPN TO 14 DEC (i.e. 16 bits -2 S+E)
+			JMP		NORM
+IZERO:		MOVB	R1,R0			;Test sign bit
+			JEQ		IZERO1			; + 0 ?
+			ANDI	R5,08000H		;Set sign bit ie -0
+IZERO1		LI		R1,DFPA
+			CALL	@STOREFPA		;CALL STORE PACKED
+			RET
+;
+;  GENERAL MAIN NORMALISATION ROUTINE FOR THE MANTISSA IN R5 and R6
+;  ASSUMES FORMAT OF R5[0DDDDDDD|DDDDDDDD] R6[DDDDDDDD|DDDDDDDD]
+;  R1 HOLDS EXPONENT IN LSB
+;
+NORM1:		SLA		R5,1			;SHIFT MANT1 (3 BYTES) LEFT
+			SLA		R6,1			;CHECK IF CARRY
+			JNC		NORM
+			INC		R5				;CARRY INTO R6 LSB
+NORM:		MOV		R5,R0			;HIGH ORDER MANT1 WORD
+			SLA		R0,2			;HAS A 1 ARRIVED?  NEED TO SHIFT BY TWO TO GET CARRY
+			JOC		NORM2
+			DEC		R1				;EXP1 ZERO?
+			JMP		NORM1			; NO CONTINUE
+NORM2		SWPB	R1				;MOVE EXP INTO HIGH BYTE
+			MOVB	R1,@DEXP		;SAVE EXP AND CALL PACK
+;
+;	ALIGN MANTISSA INTO R5 AND R6 [R5 = 00000000 0DDDDDDD R6 = DDDDDDDD 00000000
+;
+			SWPB	R5
+			MOVB	R5,R6
+			CALL	@PACKFPA
+			RET
+;
+; THIS IS THE PACKED FORMAT
+; R5 = SEEEEEEE|EMMMMMMM
+; R6 = MMMMMMMM|MMMMMMMM
+;
+; PACK THE @SIGN, @EXP,R5 (MAN1) AND R6 (MAN2 + MAN3) INTO DESTINATION FA LOCATION )
+;
+PACKFPA		SLA		R5,1			;SHIFT SO BITS ARE ON BYTE BOUNDARY SO EXP CAN BE INSERTED
+			MOVB	@DEXP,R5		;EXPONENT	
+			SRL		R5,1			;SHIFT BACK TO ORIGINAL ALIGNMENT AND EXPOSE POSITIVE SIGN BIT
+;
+;	OKAY ALMOST THERE, NEED TO SET SIGN BIT
+;
+PACK2		MOVB	@DSIGN,R0
+			JEQ		PACK3
+			ORI		R5,08000H		;SET SIGN BIT
+PACK3		LI		R1,DFPA
+			CALL	@STOREFPA		;STORE PACKED R5 and R6
+			RET
+;
+; Subtraction is just and inversion of the sign bit of the right FPA
+;  right = right ^ 0x80000000
+;			
+_fsub::	MOV		SP,R0
+		AI		R0,-4
+		MOV		*R0+,@RFPA
+		MOV		*R0+,@RFPA+2
+		MOVB	@RFPA+3,R1
+		LI		R0,08000H
+		XOR		R0,R1
+		MOVB	R1,@RFPA+3	;
+		B		@_fadd
+;
+; STACK RTURN UN ALTERED
+;
+; EQUIVALENT TO DEST = LEFT + RIGHT  (DEST = LEFT)
+;
+; TAKEN FROM 'WRITE GREAT CODE' VOLUME 1, UNDERSTANDING THE MACHINE BY RANDALL HYDE PP 88 -92
+; 
+; TAKES ARG2 (RIGHT ARGUMENT)  OFF THE STACK
+;
+_fadd::		MOV		SP,R0
+			AI		R0,-4
+			MOV		*R0+,@RFPA
+			MOV		*R0+,@RFPA+2
+			CALL	@EEXP
+			CALL	@ESIGN
+			CALL	@EMANT
+;
+;		FIRST GET MANTISSAS. 
+;		R5,R6 LMAN (LEFT  equivalent to LMAN)
+;		R3,R4 RMAN (RIGHT equivalent to RMAN)
+;
+;LOAD R3,R4,R5,R6
+;
+			LI		R1,RMAN
+			CALL	@LOADM
+			MOV		R5,R3
+			MOV		R6,R4
+;
+; NOW LMAN NOW IN R5,R6
+;
+			LI		R1,LMAN
+			CALL	@LOADM
+		;
+;if (Lexponent == 127) {
+;
+			LI		R0,127*256	;LOAD TEST FIELD INTO MSB
+			MOVB	@LEXP,R1
+			CB		R0,R1		;if(Lexponent == 127)
+			JNE		ELSE01
+;
+;	if(Lmantissa == 0) {
+;
+			C		R5,R6		;if(Lmantissa == 0) VERY GOOD CHANCE IF THEY ARE EQUAL MAN1 IS ZERO
+			JNE		DEL			;else Lmantissa is nonzero, Lexponent is all ones
+;
+;		if(Rexponent == 127 )
+;
+			MOVB	@REXP,R2
+			CB		R0,R1		
+			JNE		RT0
+;
+;		if (Rmantissa == 0)  //Do we have infinity?
+;
+			C		R3,R4		;if(Rmantissa == 0) VERY GOOD CHANCE IF THEY ARE EQUAL MAN1 IS ZERO
+			JNE		DER
+;
+;		if(Lsign == Rsign)...
+;		
+			CB		@RSIGN,@LSIGN
+			JEQ		DER
+			CLR		R6
+			LI		R5,07FC0H			;// +QNaN
+			LI		R1,DFPA
+			CALL	@STOREFPA			;already packed
+			JMP		RT0
+;		
+;else if (Rexponent == 127)
+;
+ELSE01:		LI		R0,127*256	;LOAD TEST FIELD INTO MSB
+			MOVB	@REXP,R2
+			CB		R0,R2		;if(Lexponent == 127)
+			JNE		FADD1
+;
+;		*dest = right
+;
+DER			LI		R1,DFPA
+			CALL	@PACKFPA		;Pack and store packed FP at dest
+			JMP		RT0
+;
+;		*dest = left
+;
+DEL			MOV		R3,R5			;copy right mantissa to destination mantissa
+			MOV		R4,R6
+			LI		R1,DFPA
+			CALL	@PACKFPA		;Pack and store packed FP at dest
+RT0			RET
+;
+;Okay we've got two actual floating-point values
+;
+;Dexponent = Rexponent
+;
+FADD1:		MOVB	R2,@DEXP
+;
+;if(Rexponent > Lexponent )
+;
+			CB		R2,R1
+			JLE		FADD0
+;
+;	shiftAndRound(  &Lmantissa, (Rexponent - Lexponent));
+;
+			MOVB	R2,R0		;Rexponent
+			SB		R0,R1		;(Rexponent - Lexponent)
+			SRL		R0,8		; R0 holds count
+			LI		R1,LMAN		; Right Mantissa
+			CALL	@SANDR		;shift and round
+			JMP		FADD2
+;
+FADD0		CB		R2,R1
+			JEQ		FADD2
+;
+;	shiftAndRound(  &Rmantissa, (Lexponent - Rexponent));	
+;
+			MOVB	R1,R0		;Lexponent
+			SB		R0,R2		;(Lexponent - Rexponent)
+			SRL		R0,8		; R0 holds count
+			LI		R1,RMAN		;Right Mantissa
+			CALL	@SANDR		;shift and round
+			MOVB	@LEXP,@DEXP
+;
+; OKAY ADD THE MANTISSAS TOGETHER
+;if (rsign ^ lsign)	
+;
+FADD2:		CLR		R7
+			CLR		R8
+			MOVB	@LSIGN,R7
+			MOVB	@RSIGN,R8
+			XOR		R7,R8
+			JEQ		FADD25
+;
+;  // Signs are differnt
+;	if (Lmantissa > Rmantissa)
+;	// The left value is greater, so the result inherits the sign of the left operand.
+;
+			MOVB	@RSIGN,R0
+			CB		R7,R8
+			JLE		FADD20
+			INV		R3			;Set up R3
+			NEG		R4			;if carry add one to R3 to carry through two's complement
+			JNC		FADD25A
+			INC		R3			;Dmantissa=Rmantissa-Lmantissa
+			JMP		FADD25A
+;
+;	else  /The right value is greater, so the result inherits the sign of the right operand
+;
+FADD20		INV		R5			;Set up R3
+			NEG		R6			;if carry add one to R3 to carry through two's complement
+			JNC		FADD25
+			INC		R5
+			JMP		FADD25		;;Dmantissa=Lmantissa-Rmantissa
+;
+;  else { //Signs same so add the values
+;
+FADD25		MOVB	@LSIGN,R0
+FADD25A		MOVB	R0,@DSIGN
+			A		R3,R5
+			A		R4,R6		;Dmantissa=Lmantissa+Rmantissa
+			JNC		FADD23
+			INC		R5
+FADD23		LI		R1,DMAN
+			CALL	@STOREM		;STORE IN DESTINATION ACCUMULATOR
+;
+;Normalise the result here
+;
+;if (Dmantissa >= 0x1000000)
+;
+FADD3		CI		R5,0100H
+			JLT		FADD5
+			LI		R0,1		;SHIFT COUNT
+			LI		R1,DMAN
+			CALL		@SANDR
+			MOVB	@DEXP,R0
+			AI		R0,0100H		;INC MSB TO COUNTERACT THE EFFECT OF THE SHIFT
+			MOVB	R0,@DEXP
+			JMP		FADD6
+;else { 
+;		if (Dmantissa !=0 )
+;
+
+FADD5		CLR		R0
+			C		R0,R5
+			JNE		FADD5A
+			C		R0,R6
+			JEQ		FADD5D
+;
+;  			while (Dmantissa < 0x800000) && (Dexponent > -127 ))
+;
+FADD5A		CLR		R0
+			MOVB	R1,R0			;SAVE EXPONENT
+			SWPB	R0		
+FADD5E		CI		R5,080H
+			JHE		FADD6
+			CI		R0,-127
+			JLE		FADD6
+			SLA		R6,1
+			SLA		R5,1
+			JNC		FADD5C
+			INC		R6				;ADD IN CARRY BIT
+FADD5C		DEC		R0
+			MOV		R0,R1
+			SWPB	R1
+			MOVB	R1,@DEXP
+			JMP		FADD5E
+		
+;
+;  else { //If the mantissa went to zero then clear everything else too
+;
+FADD5D		CLR		R5
+			CLR		R6
+			JMP		FADD6
+;
+; //Reconstruct the result and store away
+; *dest = packFP(Dsign, Dexponent, Dmantissa)
+;
+FADD6		LI		R1,DFPA
+			CALL	@PACKFPA
+			RET
+
+		
+_fmult::	RET
+_fdiv::		RET
+;
+; STORE CONTENTS OF R5 AND R6 INTO MANTISSA IN R1
+;
+STOREM:		LI		R0,3
+			MOV		@2*R5(WP),R2	;ADDRESS OF R5 (PRESERVE R5,R6)
+			INC		R2				;POINT TO LSB OF R5
+;
+; STORE CONTENTS OF R5 AND R6 INTO FLOATING POINT ACCUMULATOR IN R1
+;
+STOREC:		MOVB	*R2+,*R1+
+			DEC		R0
+			JNE		STOREC
+			RET	
+			
+;
+;	R1 POINTS TO THE FPA ADDRESS  (ASSUMES ALREADY PACKED)
+;
+STOREFPA	LI		R0,4
+			MOV		@2*R5(WP),R2	;ADDRESS OF R5 (PRESERVE R5,R6)
+			JMP		STOREC
+;
+;	LOAD MANTISSA AT ADDRESS IN R1 INTO R5, R6 
+;
+LOADM		LI		R0,3
+			CLR		R5				;CLEAR MSB OF R5
+			MOV		@2*R5(WP),R2	;ADDRESS OF R5 (PRESERVE R5,R6)
+			INC		R2				;POINT TO LSB
+			JMP		LOADC
+;
+;	LOAD FLOATING POINT AT ADDRESS IN R1 INTO R5, R6 
+;
+LOADFPA		LI		R0,4
+			MOV		@2*R5(WP),R2	;ADDRESS OF R5 (PRESERVE R5,R6)
+;
+LOADC:		MOVB	*R1+,*R2+
+			DEC		R0
+			JNE		LOADC
+			RET
+;
+;
+; EXTRACT SIGN FROM LEFT (LFPA) AND RIGHT FPA (RFPA)
+;
+;	NOTE: SIGN FLAG IS 0 for POSITIVE and NON ZERO FOR NEGATIVE
+;			
+ESIGN:		LI		R0,0FEFFH		; ISOLATE SIGN BIT FOR SZCB
+			MOVB	@LFPA+3,R1		;GRAB MSB BYTE
+			SZCB	R0,R1
+			MOVB	R1,@LSIGN
+			MOVB	@RFPA+3,R1
+			SZCB	R0,R1
+			MOVB	R1,@RSIGN
+ESIGN2		RET
+;
+; EXTRACT EXPONENT FROM FA1 AND FA2
+;
+EEXP		MOV		@LFPA+2,R1
+			CALL	@EEXPU
+			MOVB	R1,@LEXP
+			MOV		@RFPA+2,R1
+			CALL	@EEXPU
+			MOVB	R1,@REXP
+			RET
+;
+; EXTRACT EXPONENT COMMON UTILITY
+;			
+EEXPU		SRL		R1,1		;REMOVE SIGN BIT
+			ANDI	R1,0FFH
+			AI		R1,-127
+			SWPB	R1
+			RET
+;
+; EXTRACT MANTISSA FROM LEFT FPA (LFPA) AND RIGHT FPA (RFPA)
+;			
+EMANT		LI		R0,07FFFH	;INVERTED 8000H
+			MOVB	@LFPA+2,R1	;EMMMMMMM
+			SZC		R0,R1		;MASK OUT THE MSB OF THE MANTISSA
+			MOVB	R1,@LMAN	;NOTE LEAVE MS BIT AS 0
+			MOV		@LFPA,R2	;MMMMMMMM (M3)  MMMMMMMM (M2)
+			MOVB	R2,@LMAN+2
+			SWPB	R2
+			MOVB	R2,@LMAN+1	;NOW CORRECTLY ORDERED
+;
+;	NOW RIGHT MANTISSA
+;
+			MOVB	@RFPA+2,R1
+			MOV		@RFPA,R2
+			SZC		R0,R1		;MASK OUT THE MSB OF THE MANTISSA
+			MOVB	R1,@RMAN	;NOT LEAVE MS BIT AS 0
+			MOVB	R2,@RMAN+2
+			SWPB	R2
+			MOVB	R2,@RMAN+1
+			RET
+;
+; R0 HOLDS NUMBER OF BITS TO SHIFT
+; R1 HOLDS ADDRESS OF MANTISSA TO SHIFT
+; TAKEN FROM 'WRITE GREAT CODE' VOLUME 1, UNDERSTANDING THE MACHINE BY RANDALL HYDE
+;
+; shiftedOut = *valToShift & masks[bitsToShift]
+;
+SANDR		PUSH	R6				;save registers
+			PUSH	R5
+			PUSH	R1				;SAVE ADDESS OF MANTISSA
+			CALL	@LOADM			;GET MANTISS INTO R5,R6 - R1 HOLDS MANTISSA ADDESS TO LOAD
+			LI		R1,MASKS		;FIRST GRAB THE BITS WE ARE GOINT TO SHIFT SO WE CAN ROUND
+			MOV		R0,R3			;NEED TO MULTIPLY BY 3 AS THERE ARE 3 BYTES PER ENTRY
+			A		R3,R3			;DOUBLE
+			A		R0,R3			;3 TIMES
+			A		R3,R1			;R1 POINTS TO MASK
+			LI		R2,SHIFTOUT		;MOVE INTO SHIFTED OUT
+			MOV		@2*R5(WP),R4	;GET ADDRESS of R5
+			LI		R8,3
+SANDR00		MOVB	*R4+,R3			;GET FIRST BYTE
+			MOV		*R1+,R7			;GET MASK
+			INV		R7
+			SZCB	R7,R3			;AND IT
+			MOVB	R3,*R2+			;MOVE INTO SHIFTOUT
+			DEC		R8
+			JNE		SANDR00
+;
+;*valToShift = *valToShift >> bitsToShift
+;
+;  R5 and R6 hold *valToShift
+;
+			MOV		R0,R1			;SAVE BITS TO SHIFT
+SANDR03		SRL		R6,1
+			SRL		R5,1
+			JNC		SANDR04
+			ORI		R6,08000H		;SET MS BIT
+SANDR04		DEC		R1
+			JNE		SANDR03
+;
+;if (( shiftedOut > HOmasks[bitsToShift ])
+;
+			LI		R1,HOMASKS
+			MOV		R0,R3			;NEED TO MULTIPLY BY 3 AS THERE ARE 3 BYTES PER ENTRY
+			A		R3,R3			;DOUBLE
+			A		R0,R3			;3 TIMES
+			A		R3,R1			;R1 POINTS TO MASK
+			LI		R2,SHIFTOUT		;MOVE INTO SHIFTED OUT
+			LI		R3,3			;NUMBER OF BYTES TO COMPARE
+SANDR07		CB		*R2+,*R1+
+			JLT		SANDR06
+;
+;	*valToShift = *valToShift + 1
+;
+			INC		R6
+			JNC		SANDR08
+			INC		R5
+			JMP		SANDR08
+SANDR06		DEC		R3
+			JNE		SANDR07			;IF LESS OR EQUAL FALL THROUGH TO ELSE
+;
+; else if (shiftedOut == HOmasks[bitsToShift ])
+;
+			LI		R1,HOMASKS
+			MOV		R0,R3			;NEED TO MULTIPLY BY 3 AS THERE ARE 3 BYTES PER ENTRY
+			A		R3,R3			;DOUBLE
+			A		R0,R3			;3 TIMES
+			A		R3,R1			;R1 POINTS TO MASK
+			LI		R2,SHIFTOUT		;MOVE INTO SHIFTED OUT
+			LI		R3,3			;NUMBER OF BYTES TO COMPARE
+SANDR07A	CB		*R2+,*R1+
+			JNE		SANDR08
+			DEC		R3				;
+			JNE		SANDR07A
+;
+;	*valToShift = *valToShift + (*valToShift & 1);
+;			
+			MOV		R6,R3			;TEMPORARY SAVE
+			ANDI	R3,1
+			A		R3,R6			;BASIBLY ADDS 1 IF ANDI IS 1 OTHERWISE 0		
+			JNC		SANDR08			;CARRY SAYS WE HAVE TO ADD CARRY TO R5
+			INC		R5				;HANDLE CARRY
+;
+; AT THIS POINT WE HAVE THE FP VALUE SHIFTED IN R5 and R6
+;
+SANDR08		POP		R1
+			CALL	@STOREM			;UPDATE THE MANTISSA i.e. *valToShift
+			POP		R5
+			POP		R6
+			RET
+;
+; FLOOR
+;
+;
+;	return -(floor(-x))
+QCEIL:	CALL	ODD
+;
+;	return largest integer not greater than
+;
+_floor::
+		RET
+;		MOVLD	HL,FA+5
+;		LD	A,(HL)	;fetch exponent
+;		CP	0A8H
+;		LD	A,(FA)
+;		RET	NC	;nc => binary point is right of lsb
+;		LD	A,(HL)
+;		CALL	INT2
+;		LD	(HL),0A8H  ;place binary pt at end of fraction
+;		LD	A,E
+;		PUSH	AF
+;		LD	A,C
+;		RLA
+;		CALL	NORMA
+;		POP	AF
+;		RET
+;
+;		LD	HL,FA+5
+;		LD	(HL),0A8H
+;		INC	HL
+;		LD	(HL),80H
+;		LD	A,C
+;		RLA
+;		JP	NORMA
+	
+;
+;THAT's ALL FOLKS
+;
+			END
+			
+		
+		

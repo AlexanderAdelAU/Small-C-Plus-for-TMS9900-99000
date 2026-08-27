@@ -1,0 +1,64 @@
+T;
+;*******************************************************************
+;	CBDOS.A99 - BDOS INTERFACE FOR TMS9900 SMALL-C RUNTIME
+;	Version 2.0 - Trampoline architecture
+;
+;	This file is compiled as PAGE0 code (-P0 link99 flag).
+;	When called from page1, the linker-generated trampoline
+;	has already switched to page0 before entry.  There is
+;	therefore NO need for FAR_REF, CALL_FAR, RETF or any
+;	page detection logic - all accesses here are plain page0.
+;
+;	_bdos(func, param)  int func; int param;
+;	Entry:  args on stack (Small-C convention)
+;	Return: R1 = BDOS return code, R4 = same (compatibility)
+;
+;	_shell()
+;	Transfers control back to the shell RETURN: handler.
+;	Called by exit() at end of program.
+;	Branches through the shell vector at SHELL (0x0080)
+;	which the shell has patched to B @RETURN:
+;*******************************************************************
+;
+	DXOP	CALL,6
+	DXOP	RET,7
+	DXOP 	WHEX,10
+;
+R0	EQU	0
+R1	EQU	1
+R2	EQU	2
+R3	EQU	3
+R4	EQU	4
+R9	EQU	9
+SP	EQU	10
+;
+BDOS	EQU	84H		;BDOS VECTOR - B @LOCAL_BDOS
+SHELL	EQU	80H		;SHELL VECTOR - B @RETURN: (PATCHED BY SHELL)
+;
+;--------------------------------------------------------------------------
+; _bdos - BDOS interface.  We are in page0 (trampoline brought us here).
+;         Stack on entry: [ret_addr][param][func_code]
+;--------------------------------------------------------------------------
+;
+_cpm::
+_bdos::	MOV	*SP+,R4		; pop return address (saved, not used directly)
+	MOV	*SP+,R3		; pop CP/M parameter into R3
+	MOV	*SP,R2		; read CP/M function code into R2 (peek)
+	AI	SP,-4		; restore stack pointer to entry position
+	CALL	@BDOS		; plain page0 call - BDOS is right here
+	MOV	R1,R4		; return value in both R1 and R4
+	RET
+;
+;--------------------------------------------------------------------------
+; _shell - return to shell.  Branch through shell vector to RETURN:
+;          Works for both page0 and page1 callers:
+;            page0 callers: direct branch, already in page0
+;            page1 callers: trampoline brings us to page0 first,
+;                           then this branch completes the return
+;--------------------------------------------------------------------------
+;
+_shell::
+	CLR	R1		; return code 0 (normal exit)
+	B	@SHELL		; branch to shell vector (0x0080 = B @RETURN:)
+;
+	END
