@@ -7,7 +7,7 @@
 #include "ccdefs.h"
 #include "ccfunc.h"
 
-/*	Now reserve some storage words		*/
+/*	Now reserve some storage words	 1	*/
 
 char Version[] = "          Original Z80  Version 21st April 1990       ";
 char Target[] =
