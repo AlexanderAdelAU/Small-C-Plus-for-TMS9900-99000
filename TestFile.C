@@ -8,6 +8,7 @@
 int ga[8];
 int side;
 
+
 bump(x)
 int x;
 {
