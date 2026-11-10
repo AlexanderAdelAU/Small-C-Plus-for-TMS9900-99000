@@ -9,7 +9,7 @@ A screen capture of **ED2** running on a SBC (https://github.com/AlexanderAdelAU
 </div>.
 
 
-A version of the Small C compiler that runs natively in the TMS99000 memory space can be found at this link: https://github.com/AlexanderAdelAU/TMS99105-SBC/tree/main/SmallC99 .  This implementation requires a Memory Mapper to be available to support the overlay memory manager.
+A full featured version of the Small C compiler that runs natively in the TMS99000 memory space can be found at this link: https://github.com/AlexanderAdelAU/TMS99105-SBC/tree/main/SmallC99 .  This implementation requires a Memory Mapper to be available to support the overlay memory manager.
 
 The source for the BDOS, and IO libraries that are required to run ED2 are included on this site and is built using the following commands:
   ```	
