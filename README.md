@@ -1,13 +1,15 @@
 # Small C Plus Cross Compiler for the TMS9900/TMS99000 - Version 1.06f
 I have implemented new version of the Small C plus by  Cain, Van Zandt, Hendrix, Yorston that is essentially a full K&R version that emits code that will run on a TMS9900/TMS99000 
-Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement over other versions of Small C and includes unsigned integers and chars, floating point support, as well as structures and unions and other standard C language support that are absent from earlier versions.  The TMS9900.99000 architecture is 16 bit and so the compiler has had to be modified to extend the addressing to factor that all instructions must lie on and even or word boundary.  So chars for example whilst defined as 8 bit, actually occupy 16 bits of memory.  Byte data and text is of course byte oriented.  It can compile very large applications, for example it compiles and runs the VT100 (https://github.com/TeraTermProject/teraterm) screen editor **ED2** https://github.com/mdlougheed/ed2  without difficulty. A native version of a similar compiler running in paged memory can be found at this link: https://github.com/AlexanderAdelAU/TMS99105-SBC/tree/main/SmallC99
+Single Board Computer with at least 64k Bytes of memory.   This new version of Small-C is a major improvement over other versions of Small C and includes unsigned integers and chars, floating point support, as well as structures and unions and other standard C language support that are absent from earlier versions.  The TMS9900.99000 architecture is 16 bit and so the compiler has had to be modified to extend the addressing to factor that all instructions must lie on and even or word boundary.  So chars for example whilst defined as 8 bit, actually occupy 16 bits of memory.  Byte data and text is of course byte oriented.  It can compile very large applications, for example it compiles and runs the VT100 (https://github.com/TeraTermProject/teraterm) screen editor **ED2** https://github.com/mdlougheed/ed2  without difficulty. 
 
 A screen capture of **ED2** running on a SBC (https://github.com/AlexanderAdelAU/TMS9900-SBC) that was compiled under this version of Small C is shown here:
 
 <div style="text-align:center;">
     <img src="images/Ed2.png" alt="Screen capture" width="600">
-</div>
+</div>.
 
+
+A version of the Small C compiler that runs natively in the TMS99000 memory space can be found at this link: https://github.com/AlexanderAdelAU/TMS99105-SBC/tree/main/SmallC99 .  This implementation requires a Memory Mapper to be available to support the overlay memory manager.
 
 The source for the BDOS, and IO libraries that are required to run ED2 are included on this site and is built using the following commands:
   ```	
