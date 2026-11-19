@@ -175,3 +175,7 @@ Double integration parameters:
 Result =   3.827845
 %
 ```
+
+## Other project by the author
+
+I also maintain [Rule-Propagated Service Orchestration (RPSO)](https://github.com/AlexanderAdelAU/Rule-Propagated-Service-Orchestration), a Java research platform that runs Petri-net-defined workflows across distributed hosts and calls existing services without changing their implementations.
